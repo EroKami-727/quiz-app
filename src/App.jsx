@@ -30,7 +30,7 @@ function MainPage() {
           <>
             {/* Welcome banner */}
             <section className="welcome-banner">
-              <h2>Hi hello vannakam Welcome to Quizlike!</h2>
+              <h2>Hi hello Welcome to Quizlike!</h2>
               <p>Your personal learning platform for interactive quizzes and educational content</p>
             </section>
 
