@@ -22,6 +22,8 @@ function MainPage() {
     setActiveNav(navText);
   };
 
+  
+
   // Content renderer based on active navigation
   const renderContent = () => {
     switch(activeNav) {
