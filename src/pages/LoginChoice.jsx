@@ -43,6 +43,46 @@ function LoginChoice() {
           </div>
         </div>
       </div>
+      
+      <div className="login-info-panel">
+        <div className="info-content">
+          <h2>Why Quizlike?</h2>
+          <div className="feature-list">
+            <div className="feature-item">
+              <div className="feature-icon">✓</div>
+              <div className="feature-text">
+                <h3>Interactive Learning</h3>
+                <p>Engage students with interactive quizzes and immediate feedback</p>
+              </div>
+            </div>
+            <div className="feature-item">
+              <div className="feature-icon">✓</div>
+              <div className="feature-text">
+                <h3>Track Progress</h3>
+                <p>Monitor student performance with detailed analytics</p>
+              </div>
+            </div>
+            <div className="feature-item">
+              <div className="feature-icon">✓</div>
+              <div className="feature-text">
+                <h3>Easy to Use</h3>
+                <p>Intuitive interface for both teachers and students</p>
+              </div>
+            </div>
+            <div className="feature-item">
+              <div className="feature-icon">✓</div>
+              <div className="feature-text">
+                <h3>Mobile Friendly</h3>
+                <p>Access quizzes anytime, anywhere, on any device</p>
+              </div>
+            </div>
+          </div>
+          <div className="testimonial">
+            <p>"Quizlike has transformed how I assess my students. It's a game-changer for modern education!"</p>
+            <div className="testimonial-author">- Professor Johnson, Computer Science</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
