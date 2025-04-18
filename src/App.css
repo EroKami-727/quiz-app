@@ -529,3 +529,95 @@ button {
     font-size: 1.8rem;
   }
 }
+/* Login Choice Page Styles */
+.login-choice-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #05192e, #2d4356);
+  padding: 2rem;
+}
+
+.login-choice-content {
+  background-color: white;
+  border-radius: 15px;
+  padding: 3rem;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-width: 800px;
+  width: 100%;
+}
+
+.login-choice-title {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.login-choice-subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 3rem;
+}
+
+.login-options {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  flex-wrap: wrap;
+}
+
+.login-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  border-radius: 15px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 250px;
+}
+
+.login-option:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.login-option-image {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.login-option-icon {
+  font-size: 3rem;
+  color: white;
+}
+
+.login-option-title {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.login-option-description {
+  color: #666;
+}
+
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+  .login-options {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .login-option {
+    width: 100%;
+    max-width: 300px;
+  }
+}
