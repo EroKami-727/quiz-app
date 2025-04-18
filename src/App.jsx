@@ -13,20 +13,23 @@ function App() {
   return (
     <div className="main-container">
       <Routes>
+        {/* Redirect root to login choice */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
         {/* Public routes */}
         <Route path="/login" element={<LoginChoice />} />
         <Route path="/student/login" element={<StudentLogin />} />
         <Route path="/teacher/login" element={<TeacherLogin />} />
         
         {/* Protected routes wrapped in Layout */}
-        <Route path="/" element={<Layout />}>
+        <Route path="/dashboard" element={<Layout />}>
           <Route index element={<Homepage />} />
           <Route path="student/attend-quiz/:quizId" element={<AttendQuiz />} />
           <Route path="teacher/create-quiz" element={<CreateQuiz />} />
         </Route>
         
         {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </div>
   );
