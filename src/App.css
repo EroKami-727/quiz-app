@@ -531,12 +531,22 @@ button {
 }
 /* Login Choice Page Styles */
 .login-choice-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: flex; /* Changed to flex to easily center the wrapper */
+  justify-content: center; /* Center the wrapper horizontally */
+  align-items: center; /* Center the wrapper vertically */
   min-height: 100vh;
   background: linear-gradient(to bottom right, #05192e, #2d4356);
-  padding: 2rem;
+  padding: 2rem; /* Padding around the wrapper */
+  box-sizing: border-box; /* Include padding in width/height calculation */
+}
+
+/* NEW: Wrapper for the two main panels */
+.login-choice-wrapper {
+  display: flex;
+  gap: 2rem; /* Space between the two panels */
+  width: 100%;
+  max-width: 1400px; /* Max width for the entire content area */
+  align-items: stretch; /* Make panels equal height */
 }
 
 .login-choice-content {
@@ -545,8 +555,12 @@ button {
   padding: 3rem;
   text-align: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  max-width: 800px;
-  width: 100%;
+  /* flex: 2; /* Takes up 2/3 of the available space */
+  flex-basis: 60%; /* More explicit control over initial size */
+  display: flex; /* Use flex internally for better alignment */
+  flex-direction: column; /* Stack title/subtitle/options vertically */
+  justify-content: center; /* Center content vertically within this panel */
+  min-width: 0; /* Prevents flex item overflow issues */
 }
 
 .login-choice-title {
@@ -564,20 +578,26 @@ button {
 .login-options {
   display: flex;
   justify-content: center;
-  gap: 3rem;
-  flex-wrap: wrap;
+  gap: 2rem; /* Reduced gap slightly */
+  flex-wrap: wrap; /* Allow wrapping if needed */
+  margin-top: auto; /* Pushes options down if panel stretches */
+  margin-bottom: auto; /* Helps vertical centering with title/subtitle */
 }
 
 .login-option {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
+  padding: 1.5rem; /* Slightly reduced padding */
   border-radius: 15px;
   background-color: #f8f9fa;
   cursor: pointer;
   transition: all 0.3s ease;
-  width: 250px;
+  /* width: 250px; /* Let flexbox handle width */
+  flex: 1; /* Allow options to grow/shrink equally */
+  min-width: 200px; /* Minimum width before wrapping */
+  max-width: 250px; /* Maximum width */
+  text-align: center; /* Ensure text inside is centered */
 }
 
 .login-option:hover {
@@ -586,38 +606,140 @@ button {
 }
 
 .login-option-image {
-  width: 120px;
-  height: 120px;
+  width: 100px; /* Slightly smaller */
+  height: 100px; /* Slightly smaller */
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem; /* Reduced margin */
+  border-radius: 50%; /* Moved border-radius here from inline style */
 }
 
 .login-option-icon {
-  font-size: 3rem;
+  font-size: 2.5rem; /* Slightly smaller */
   color: white;
 }
 
 .login-option-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem; /* Slightly smaller */
   color: #333;
   margin-bottom: 0.5rem;
 }
 
 .login-option-description {
   color: #666;
+  font-size: 0.9rem; /* Slightly smaller */
+  line-height: 1.3;
 }
 
-/* Media query for smaller screens */
+/* Why Quizlike panel styling */
+.login-info-panel {
+  background-color: white;
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  /* flex: 1; /* Takes up 1/3 of the available space */
+  flex-basis: 40%; /* More explicit control */
+  display: flex; /* Use flex for centering */
+  flex-direction: column;
+  justify-content: center; /* Center content vertically */
+  min-width: 0; /* Prevents flex item overflow issues */
+  /* margin-left: 2rem; /* Removed, using gap on wrapper instead */
+}
+
+.info-content h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+}
+
+.feature-icon {
+  color: #4b7bec;
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-right: 1rem;
+  min-width: 20px;
+  line-height: 1.4; /* Align icon better with text */
+}
+
+.feature-text h3 {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 0.3rem;
+}
+
+.feature-text p {
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* Media query adjustments */
+@media (max-width: 1200px) {
+  .login-choice-wrapper {
+     flex-direction: column; /* Stack panels vertically */
+     max-width: 800px; /* Adjust max-width for stacked layout */
+     align-items: center; /* Center stacked items */
+  }
+
+  .login-choice-content,
+  .login-info-panel {
+     flex-basis: auto; /* Reset flex-basis */
+     width: 100%; /* Make panels take full width */
+  }
+
+   .login-options {
+     gap: 1.5rem; /* Adjust gap for smaller screens */
+   }
+}
+
 @media (max-width: 768px) {
-  .login-options {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .login-option {
-    width: 100%;
-    max-width: 300px;
-  }
+   .login-choice-container {
+     padding: 1rem; /* Reduce padding on very small screens */
+   }
+   .login-choice-wrapper {
+     gap: 1.5rem; /* Reduce gap */
+     max-width: 100%; /* Allow full width usage */
+   }
+
+   .login-choice-content {
+     padding: 2rem; /* Reduce padding */
+   }
+
+   .login-options {
+     flex-direction: column; /* Stack options vertically */
+     align-items: center; /* Center stacked options */
+     gap: 1.5rem;
+   }
+
+   .login-option {
+     width: 100%; /* Make options take full width */
+     max-width: 300px; /* Limit max width of options */
+     min-width: unset; /* Remove min-width */
+     flex: unset; /* Reset flex property */
+   }
+
+   .login-info-panel {
+     padding: 1.5rem; /* Reduce padding */
+   }
+
+   .login-choice-title {
+     font-size: 2rem; /* Adjust font size */
+   }
+   .login-choice-subtitle {
+     font-size: 1rem; /* Adjust font size */
+     margin-bottom: 2rem; /* Adjust margin */
+   }
 }
