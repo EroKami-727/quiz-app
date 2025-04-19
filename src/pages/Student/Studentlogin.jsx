@@ -95,7 +95,9 @@ const StudentLogin = () => {
           <div className="overlay">
             <div className="overlay-panel overlay-left">
               <h1>Welcome Back!</h1>
+              <br></br>
               <p>To keep connected with us please login with your personal info</p>
+              <br></br>
               <button 
                 className="ghost" 
                 onClick={() => setIsSignUp(false)}
