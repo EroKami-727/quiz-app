@@ -674,3 +674,198 @@ button:disabled {
       }
   }
 }
+/* Attend Quiz Page Styles */
+.attend-quiz-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(to bottom right, #3a1c71, #4776e6);
+  color: white;
+}
+
+.quiz-options {
+  background-color: white;
+  border-radius: 10px;
+  padding: 2rem;
+  margin: 2rem 0;
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  color: #333;
+}
+
+.sign-out-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid white;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sign-out-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px);
+}
+/* Attend Quiz Page Styles (Full Screen) */
+.attend-quiz-full-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* Center content vertically */
+  min-height: 100vh; /* Make it take the full viewport height */
+  width: 100%; /* Make it take the full viewport width */
+  padding: 2rem;
+  background: linear-gradient(to bottom right, #3a1c71, #4776e6);
+  color: white;
+  position: relative; /* For absolute positioning of sign-out button */
+  overflow: hidden; /* Clip any overflowing animations */
+}
+
+.attend-quiz-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem; /* Space between sections */
+  width: 100%;
+  max-width: 2000px;
+  padding: 2rem;
+  border-radius: 15px;
+  background-color: rgba(255, 255, 255, 0.1); /* Slightly transparent background for content */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.5s ease-out; /* Initial fade-in */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sign-out-top-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid white;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease, transform 0.2s ease-in-out;
+  z-index: 10; /* Ensure it's above other elements */
+}
+
+.sign-out-top-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px);
+}
+
+.attend-quiz-content h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  animation: slideInDown 0.6s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.attend-quiz-content .welcome-text {
+  font-size: 1.1rem;
+  color: #ddd;
+  margin-bottom: 2rem;
+  animation: fadeIn 0.7s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.join-quiz-card,
+.available-quizzes-card {
+  background-color: white;
+  color: #333;
+  border-radius: 10px;
+  padding: 2rem;
+  width: 100%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.join-quiz-card:nth-child(2) { /* Target the Join Quiz card */
+  animation-delay: 0.4s;
+}
+
+.available-quizzes-card {
+  animation-delay: 0.6s;
+}
+
+@keyframes fadeInUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.join-quiz-card h2,
+.available-quizzes-card h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1.2rem;
+  text-align: center;
+}
+
+.input-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.input-group input {
+  flex-grow: 1;
+  padding: 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+.input-group button.join-button {
+  background-color: #4b70e2;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 12px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease-in-out;
+}
+
+.input-group button.join-button:hover {
+  background-color: #3a5cc1;
+  transform: scale(1.05);
+}
+
+.available-quizzes-card p {
+  text-align: center;
+  color: #666;
+}

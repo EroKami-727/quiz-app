@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { app } from '../../firebase';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
 import '../../App.css';
 
 const StudentLogin = () => {
@@ -10,6 +10,7 @@ const StudentLogin = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const handleAuthAction = async (e) => {
     e.preventDefault();
@@ -23,13 +24,24 @@ const StudentLogin = () => {
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
-      // Handle successful authentication here (e.g., redirect)
+      // Redirect after successful authentication
+      navigate('/student/attend-quiz');
     } catch (error) {
+      console.error("Authentication error:", error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
   };
+
+  // Mobile toggle for responsive design
+  const renderMobileToggle = () => (
+    <div className="mobile-switch">
+      <button type="button" onClick={() => setIsSignUp(!isSignUp)}>
+        {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+      </button>
+    </div>
+  );
 
   return (
     <div className="student-auth-container">
@@ -119,6 +131,7 @@ const StudentLogin = () => {
             </div>
           </div>
         </div>
+        {renderMobileToggle()}
       </div>
       <div className="back-to-home">
         <Link to="/login">Back to Home</Link>
