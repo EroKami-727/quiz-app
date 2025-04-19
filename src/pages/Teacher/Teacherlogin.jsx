@@ -104,8 +104,10 @@ const TeacherLogin = () => {
               </button>
             </div>
             <div className="overlay-panel overlay-right">
-              <h1>Hello, Teacher!</h1>
+              <h1>Hello, Teacher!
+              </h1><br></br>  
               <p>Enter your details and start creating engaging quizzes for your students</p>
+              <br></br>
               <button 
                 className="ghost" 
                 onClick={() => setIsSignUp(true)}
