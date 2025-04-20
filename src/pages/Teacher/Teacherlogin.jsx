@@ -30,6 +30,14 @@ const TeacherLogin = () => {
       setLoading(false);
     }
   };
+  // Mobile toggle for responsive design
+  const renderMobileToggle = () => (
+    <div className="mobile-switch">
+      <button type="button" onClick={() => setIsSignUp(!isSignUp)}>
+        {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+      </button>
+    </div>
+  );
 
   return (
     <div className="teacher-auth-container">
