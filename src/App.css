@@ -715,11 +715,10 @@ button:disabled {
 /* Attend Quiz Page Styles (Full Screen) */
 .attend-quiz-full-container {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center; /* Center content vertically */
   min-height: 100vh; /* Make it take the full viewport height */
-  width: 100%; /* Make it take the full viewport width */
+  width: 100vw; /* Make it take the full viewport width */
   padding: 2rem;
   background: linear-gradient(to bottom right, #3a1c71, #4776e6);
   color: white;
@@ -732,12 +731,11 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   gap: 2rem; /* Space between sections */
-  width: 100%;
-  max-width: 2000px;
+  width: 50vw;
   padding: 2rem;
   border-radius: 15px;
   background-color: rgba(255, 255, 255, 0.1); /* Slightly transparent background for content */
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(181, 64, 64, 0.437);
   animation: fadeIn 0.5s ease-out; /* Initial fade-in */
 }
 
@@ -758,7 +756,6 @@ button:disabled {
   right: 20px;
   background-color: rgba(255, 255, 255, 0.2);
   color: white;
-  border: 1px solid white;
   border-radius: 20px;
   padding: 10px 20px;
   font-weight: bold;
@@ -768,7 +765,7 @@ button:disabled {
 }
 
 .sign-out-top-btn:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(239, 9, 9, 0.926);
   transform: translateY(-3px);
 }
 
