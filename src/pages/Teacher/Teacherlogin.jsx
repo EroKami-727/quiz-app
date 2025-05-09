@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { app } from '../../firebase';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import '../../App.css';
 
 const TeacherLogin = () => {
@@ -10,6 +10,7 @@ const TeacherLogin = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); // Hook for navigation
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -20,16 +21,20 @@ const TeacherLogin = () => {
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
+        // After successful signup, redirect to create quiz page
+        navigate('/teacher/create-quiz');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        // After successful login, redirect to create quiz page
+        navigate('/teacher/create-quiz');
       }
-      // Handle successful authentication here (e.g., redirect)
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+  
   // Mobile toggle for responsive design
   const renderMobileToggle = () => (
     <div className="mobile-switch">
@@ -128,6 +133,8 @@ const TeacherLogin = () => {
           </div>
         </div>
       </div>
+      {/* Display mobile toggle in smaller screens */}
+      {renderMobileToggle()}
       <div className="back-to-home">
         <Link to="/login">Back to Home</Link>
       </div>
