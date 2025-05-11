@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../firebase'; // Import directly from your firebase.js
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import '../../App.css';
-// Note: Additional CSS for this component is added to App.css
 
 const CreateQuiz = () => {
   const navigate = useNavigate();
   const auth = getAuth();
-  const db = getFirestore();
   
   // Authentication state
   const [user, setUser] = useState(null);
@@ -29,6 +28,7 @@ const CreateQuiz = () => {
   const [generatedCode, setGeneratedCode] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Check if user is authenticated
   useEffect(() => {
@@ -88,6 +88,7 @@ const CreateQuiz = () => {
       setQuestions(newQuestions);
     } else {
       setError('Quiz must have at least one question');
+      setTimeout(() => setError(''), 3000);
     }
   };
   
@@ -142,28 +143,42 @@ const CreateQuiz = () => {
   const handlePublishQuiz = async () => {
     if (!validateQuiz()) return;
     
+    setIsSubmitting(true);
+    
     try {
       const quizCode = generateQuizCode();
       
+      // Format questions to store in Firestore
+      const formattedQuestions = questions.map(q => ({
+        text: q.text,
+        options: q.options,
+        correctOption: q.correctOption
+      }));
+      
       // Save to Firestore
-      await addDoc(collection(db, "quizzes"), {
+      const quizRef = await addDoc(collection(db, "quizzes"), {
         title: quizTitle,
         description: quizDescription,
-        questions: questions,
-        timeLimit: timeLimit,
+        questions: formattedQuestions,
+        timeLimit: parseInt(timeLimit),
         createdBy: user.uid,
         createdAt: serverTimestamp(),
-        code: quizCode
+        code: quizCode,
+        active: true // You can use this to enable/disable quizzes
       });
+      
+      console.log("Quiz created with ID: ", quizRef.id);
       
       setGeneratedCode(quizCode);
       setIsPublished(true);
       setSuccessMessage('Quiz published successfully!');
       
-      // Clear the form or reset states if needed
-      // resetForm();
     } catch (error) {
+      console.error("Error publishing quiz: ", error);
       setError('Error publishing quiz: ' + error.message);
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -317,8 +332,9 @@ const CreateQuiz = () => {
                 onClick={handlePublishQuiz}
                 className="publish-quiz-btn"
                 type="button"
+                disabled={isSubmitting}
               >
-                Publish Quiz
+                {isSubmitting ? 'Publishing...' : 'Publish Quiz'}
               </button>
             </div>
           </>
