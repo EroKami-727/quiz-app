@@ -4,6 +4,7 @@ import LoginChoice from './pages/LoginChoice';
 import StudentLogin from './pages/Student/Studentlogin';
 import TeacherLogin from './pages/Teacher/Teacherlogin';
 import AttendQuiz from './pages/Student/AttendQuiz';
+import TakeQuiz from './pages/Student/TakeQuiz';
 import CreateQuiz from './pages/Teacher/CreateQuiz';
 import './App.css';
 import { getAuth } from 'firebase/auth';
@@ -32,7 +33,7 @@ function App() {
         <Route path="/student/login" element={<StudentLogin />} />
         <Route path="/teacher/login" element={<TeacherLogin />} />
         
-        {/* Protected route */}
+        {/* Protected routes */}
         <Route 
           path="/student/attend-quiz" 
           element={
@@ -42,13 +43,22 @@ function App() {
           } 
         />
         <Route 
-  path="/teacher/create-quiz" 
-  element={
-    <ProtectedRoute>
-      <CreateQuiz />
-    </ProtectedRoute>
-  } 
-/>
+          path="/student/quiz/:quizCode" 
+          element={
+            <ProtectedRoute>
+              <TakeQuiz />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/teacher/create-quiz" 
+          element={
+            <ProtectedRoute>
+              <CreateQuiz />
+            </ProtectedRoute>
+          } 
+        />
+        
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
