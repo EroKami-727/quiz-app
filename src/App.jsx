@@ -8,19 +8,18 @@ import TakeQuiz from './pages/Student/TakeQuiz';
 import CreateQuiz from './pages/Teacher/CreateQuiz';
 import './App.css';
 import { getAuth } from 'firebase/auth';
+import { useAuth } from './contexts/AuthContext';
 
 // Simple protected route implementation
 const ProtectedRoute = ({ children }) => {
-  const auth = getAuth();
-  const user = auth.currentUser;
+  const { currentUser } = useAuth();
   
-  if (!user) {
+  if (!currentUser) {
     return <Navigate to="/student/login" replace />;
   }
   
   return children;
 };
-
 function App() {
   return (
     <div className="main-container">
