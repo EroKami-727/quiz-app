@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { app } from '../../firebase';
-import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { app, db } from '../../firebase';
+import { Link, useNavigate } from 'react-router-dom';
 import '../../App.css';
 
 const StudentLogin = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
   const handleAuthAction = async (e) => {
     e.preventDefault();
@@ -20,10 +22,37 @@ const StudentLogin = () => {
     const auth = getAuth(app);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // Create user with email and password
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Update profile to add display name
+        await updateProfile(user, {
+          displayName: displayName || email.split('@')[0] // Use part of email as fallback
+        });
+        
+        // Store additional user data in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          uid: user.uid,
+          email: user.email,
+          displayName: displayName || email.split('@')[0],
+          role: "student",
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp()
+        });
       } else {
+        // Just sign in
         await signInWithEmailAndPassword(auth, email, password);
+        
+        // Update last login timestamp
+        const user = auth.currentUser;
+        if (user) {
+          await setDoc(doc(db, "users", user.uid), {
+            lastLogin: serverTimestamp()
+          }, { merge: true });
+        }
       }
+      
       // Redirect after successful authentication
       navigate('/student/attend-quiz');
     } catch (error) {
@@ -54,6 +83,12 @@ const StudentLogin = () => {
               <a href="#" className="social"><i className="fab fa-facebook"></i></a>
             </div>
             <span>or use your email for registration</span>
+            <input 
+              type="text" 
+              placeholder="Display Name" 
+              value={displayName} 
+              onChange={(e) => setDisplayName(e.target.value)} 
+            />
             <input 
               type="email" 
               placeholder="Email" 
