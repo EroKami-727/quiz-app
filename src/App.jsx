@@ -6,6 +6,7 @@ import TeacherLogin from './pages/Teacher/Teacherlogin';
 import AttendQuiz from './pages/Student/AttendQuiz';
 import TakeQuiz from './pages/Student/TakeQuiz';
 import CreateQuiz from './pages/Teacher/CreateQuiz';
+import TeacherHome from './pages/Teacher/TeacherHome';
 import './App.css';
 import { getAuth } from 'firebase/auth';
 import { useAuth } from './contexts/AuthContext';
@@ -57,6 +58,14 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+        path="/teacher/home" 
+        element={
+          <ProtectedRoute>
+            <TeacherHome />
+          </ProtectedRoute>
+  } 
+/>
         
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/login" replace />} />
