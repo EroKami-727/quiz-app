@@ -54,7 +54,7 @@ const StudentLogin = () => {
       }
       
       // Redirect after successful authentication
-      navigate('/student/attend-quiz');
+      navigate('/student/dashboard');
     } catch (error) {
       console.error("Authentication error:", error);
       setError(error.message);

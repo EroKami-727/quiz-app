@@ -9,6 +9,7 @@ import CreateQuiz from './pages/Teacher/CreateQuiz';
 import './App.css';
 import { getAuth } from 'firebase/auth';
 import { useAuth } from './contexts/AuthContext';
+import StudentDashboard from './pages/Student/StudentDashBoard';
 
 // Simple protected route implementation
 const ProtectedRoute = ({ children }) => {
@@ -19,48 +20,53 @@ const ProtectedRoute = ({ children }) => {
   }
   
   return children;
+  
 };
 function App() {
   return (
     <div className="main-container">
       <Routes>
-        {/* Redirect root to login choice */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        
-        {/* Public routes */}
-        <Route path="/login" element={<LoginChoice />} />
-        <Route path="/student/login" element={<StudentLogin />} />
-        <Route path="/teacher/login" element={<TeacherLogin />} />
-        
-        {/* Protected routes */}
-        <Route 
-          path="/student/attend-quiz" 
-          element={
-            <ProtectedRoute>
-              <AttendQuiz />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/student/quiz/:quizCode" 
-          element={
-            <ProtectedRoute>
-              <TakeQuiz />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/teacher/create-quiz" 
-          element={
-            <ProtectedRoute>
-              <CreateQuiz />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+  <Route path="/" element={<Navigate to="/login" replace />} />
+  <Route path="/login" element={<LoginChoice />} />
+  <Route path="/student/login" element={<StudentLogin />} />
+  <Route path="/teacher/login" element={<TeacherLogin />} />
+
+  {/* Protected routes */}
+  <Route 
+    path="/student/dashboard" 
+    element={
+      <ProtectedRoute>
+        <StudentDashboard />
+      </ProtectedRoute>
+    } 
+  />
+  <Route 
+    path="/student/attend-quiz" 
+    element={
+      <ProtectedRoute>
+        <AttendQuiz />
+      </ProtectedRoute>
+    } 
+  />
+  <Route 
+    path="/student/quiz/:quizCode" 
+    element={
+      <ProtectedRoute>
+        <TakeQuiz />
+      </ProtectedRoute>
+    } 
+  />
+  <Route 
+    path="/teacher/create-quiz" 
+    element={
+      <ProtectedRoute>
+        <CreateQuiz />
+      </ProtectedRoute>
+    } 
+  />
+  <Route path="/student/dashboard" element={<StudentDashboard />} />
+  <Route path="*" element={<Navigate to="/login" replace />} />
+</Routes>
     </div>
   );
 }
