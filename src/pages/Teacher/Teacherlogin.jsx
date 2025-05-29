@@ -54,7 +54,7 @@ const TeacherLogin = () => {
       }
       
       // Redirect after successful authentication
-      navigate('/teacher/create-quiz');
+      navigate('/teacher/home');
     } catch (err) {
       setError(err.message);
     } finally {
