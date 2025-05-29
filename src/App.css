@@ -1733,6 +1733,7 @@ textarea.form-control {
   }
 }
 
+
 /* Teacher Home Dashboard Styles */
 .teacher-home-container {
   min-height: 100vh;
@@ -1959,7 +1960,6 @@ textarea.form-control {
     padding: 20px;
   }
 }
-
 .attend-icon-btn {
   display: flex;
   align-items: center;
