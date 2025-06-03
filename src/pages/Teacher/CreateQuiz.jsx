@@ -3,7 +3,8 @@ import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { db } from '../../firebase'; // Import directly from your firebase.js
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import '../../App.css';
+import '../../styles/Teacher/CreateQuiz.css';
+
 
 const CreateQuiz = () => {
   const navigate = useNavigate();

@@ -1,0 +1,203 @@
+.teacher-home-container {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    background: linear-gradient(to bottom right, #f12711, #f5af19);
+    min-height: 100vh;
+    color: white;
+    box-sizing: border-box;
+  }
+  
+  /* Header Section */
+  .teacher-home-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  
+  .header-left h1 {
+    margin: 0;
+    font-size: 2.5rem;
+  }
+  
+  .header-left p {
+    font-size: 1.2rem;
+    margin-top: 0.5rem;
+  }
+  
+  .header-right {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .profile-btn,
+  .sign-out-btn {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .profile-btn:hover,
+  .sign-out-btn:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-3px);
+  }
+  
+  .error-message {
+    background-color: #fff8f8;
+    color: #d32f2f;
+    padding: 12px;
+    border-left: 4px solid #d32f2f;
+    margin-bottom: 1.5rem;
+    border-radius: 0 5px 5px 0;
+    color: #d32f2f;
+    font-weight: bold;
+  }
+  
+  /* Dashboard Layout */
+  .dashboard-content {
+    flex: 1;
+    background-color: white;
+    border-radius: 15px;
+    padding: 2rem;
+    color: #333;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+  
+  .dashboard-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+  
+  /* Dashboard Sections */
+  .dashboard-section h2 {
+    color: #e85a19;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .action-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+  
+  .action-card {
+    flex: 1 1 250px;
+    background-color: #f9f9f9;
+    color: #333;
+    border-radius: 10px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  }
+  
+  .action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .action-card.primary {
+    background-color: #e85a19;
+    color: white;
+  }
+  
+  .action-card.secondary {
+    background-color: #4b70e2;
+    color: white;
+  }
+  
+  .card-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Stats Section */
+  .stats-cards {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .stat-card {
+    flex: 1 1 200px;
+    background-color: #f5f5f5;
+    color: #333;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  .stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #e85a19;
+  }
+  
+  .stat-label {
+    font-size: 1rem;
+    color: #777;
+  }
+  
+  /* Recent Activity */
+  .activity-list {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 1.5rem;
+    color: #333;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1rem;
+    color: #555;
+  }
+  
+  .activity-item i {
+    font-size: 1.2rem;
+    color: #888;
+  }
+  
+  /* Loading */
+  .loading-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    background: linear-gradient(to bottom right, #f12711, #f5af19);
+    color: white;
+    font-size: 1.5rem;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .teacher-home-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  
+    .action-cards {
+      flex-direction: column;
+    }
+  
+    .stats-cards {
+      flex-direction: column;
+    }
+  }
+  

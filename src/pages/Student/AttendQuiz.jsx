@@ -4,6 +4,7 @@ import { getAuth, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
+import '../../styles/Student/AttendQuiz.css'
 
 const AttendQuiz = () => {
   const navigate = useNavigate();

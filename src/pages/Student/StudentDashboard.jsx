@@ -3,6 +3,7 @@ import { getAuth, signOut } from 'firebase/auth';
 import { db } from '../../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import '../../styles/Student/StudentDashboard.css'
 import {
   PlayCircle, ChevronRight, Award, User, LogOut
 } from 'lucide-react';

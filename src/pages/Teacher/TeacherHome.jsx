@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import '../../App.css';
+import '../../styles/Teacher/TeacherHome.css';
 
 const TeacherHome = () => {
   const navigate = useNavigate();

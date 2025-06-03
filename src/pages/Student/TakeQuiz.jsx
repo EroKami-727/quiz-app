@@ -4,6 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getAuth, signOut } from 'firebase/auth';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import '../../styles/Student/TakeQuiz.css';
+
 
 const TakeQuiz = () => {
   const { quizCode } = useParams();
