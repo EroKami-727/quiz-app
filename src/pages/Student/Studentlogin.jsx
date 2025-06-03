@@ -3,7 +3,7 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, up
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { app, db } from '../../firebase';
 import { Link, useNavigate } from 'react-router-dom';
-import '../../App.css';
+import '../../styles/Student/StudentLogin.css';
 
 const StudentLogin = () => {
   const [isSignUp, setIsSignUp] = useState(false);
