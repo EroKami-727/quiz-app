@@ -3,7 +3,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, up
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { app, db } from '../../firebase';
 import { Link, useNavigate } from 'react-router-dom';
-import '../../styles/Teacher/teacherLogin.css';
+import '../../styles/Teacher/TeacherLogin.css';
 
 const TeacherLogin = () => {
   const [isSignUp, setIsSignUp] = useState(false);
