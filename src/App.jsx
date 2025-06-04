@@ -7,6 +7,7 @@ import AttendQuiz from './pages/Student/AttendQuiz';
 import TakeQuiz from './pages/Student/TakeQuiz';
 import CreateQuiz from './pages/Teacher/CreateQuiz';
 import TeacherHome from './pages/Teacher/TeacherHome';
+import YourQuizzes from './pages/Teacher/YourQuizzes';
 import StudentDashboard from './pages/Student/StudentDashboard.jsx';
 
 import './App.css';
@@ -74,6 +75,14 @@ function App() {
           element={
             <ProtectedRoute>
               <TeacherHome />
+            </ProtectedRoute>
+          }
+        />
+        <Route 
+          path="/teacher/your-quizzes" 
+          element={
+            <ProtectedRoute>
+              <YourQuizzes />
             </ProtectedRoute>
           }
         />
