@@ -500,9 +500,9 @@ button:disabled {
 }
 
 .return-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid white;
+  background-color: rgb(56, 14, 155);
+  color: rgb(255, 255, 255);
+  border: 1px solid rgb(32, 27, 186);
   border-radius: 20px;
   padding: 10px 25px;
   font-weight: bold;
@@ -512,7 +512,7 @@ button:disabled {
 }
 
 .return-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgb(31, 5, 95);
   transform: translateY(-3px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
