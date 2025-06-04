@@ -4,8 +4,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getAuth, signOut } from 'firebase/auth';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
-import '../../styles/Student/TakeQuiz.css';
-
 
 const TakeQuiz = () => {
   const { quizCode } = useParams();
@@ -173,33 +171,39 @@ const TakeQuiz = () => {
   }
 
   // Quiz completed state
-  if (quizSubmitted) {
-    return (
-      <div className="take-quiz-container">
-        <div className="quiz-completed-container">
-          <h1>Quiz Completed!</h1>
-          <div className="score-display">
-            <h2>Your Score</h2>
-            <div className="score-circle">
-              <span>{score}%</span>
-            </div>
-            <p>{score >= 70 ? 'Great job!' : 'Keep practicing!'}</p>
+if (quizSubmitted) {
+  return (
+    <div className="take-quiz-container">
+      <div className="quiz-completed-container">
+        <h1>Quiz Completed!</h1>
+        <div className="score-display">
+          <h2>Your Score</h2>
+          <div className="score-circle">
+            <span>{score}%</span>
           </div>
-          
-          <div className="quiz-summary">
-            <h3>Summary</h3>
-            <p>Quiz: {quiz.title}</p>
-            <p>Questions: {quiz.questions.length}</p>
-            <p>Correct Answers: {Math.round((score / 100) * quiz.questions.length)}</p>
-          </div>
-          
+          <p>{score >= 70 ? 'Great job!' : 'Keep practicing!'}</p>
+        </div>
+        
+        <div className="quiz-summary">
+          <h3>Summary</h3>
+          <p>Quiz: {quiz.title}</p>
+          <p>Questions: {quiz.questions.length}</p>
+          <p>Correct Answers: {Math.round((score / 100) * quiz.questions.length)}</p>
+        </div>
+        
+        {/* Updated button section with two buttons */}
+        <div className="completion-buttons">
+          <button onClick={() => navigate('/student/dashboard')} className="dashboard-button">
+            Go to Dashboard
+          </button>
           <button onClick={handleReturnToHome} className="return-button">
-            Return to Home
+            Take Another Quiz
           </button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // Quiz intro/start screen
   if (!quizStarted) {
