@@ -93,6 +93,24 @@ const AttendQuiz = () => {
     navigate(`/student/quiz/${quizId}`);
   };
 
+  // Format date helper function
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Unknown date';
+    
+    try {
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
+
   return (
     <div className="attend-quiz-full-container">
       <button onClick={handleSignOut} className="sign-out-top-btn">
@@ -128,30 +146,72 @@ const AttendQuiz = () => {
           <h2>Available Quizzes</h2>
           
           {loadingQuizzes ? (
-            <p>Loading available quizzes...</p>
+            <div className="loading-state">
+              <div className="loading-spinner"></div>
+              <p>Loading available quizzes...</p>
+            </div>
           ) : availableQuizzes.length > 0 ? (
-            <div className="quiz-list">
-              {availableQuizzes.map((quiz) => (
-                <div key={quiz.id} className="quiz-list-item">
-                  <div className="quiz-info">
-                    <h3>{quiz.title}</h3>
-                    <p className="quiz-details">
-                      <span>{quiz.questions.length} questions</span>
-                      <span>•</span>
-                      <span>{Math.floor(quiz.timeLimit / 60)}:{(quiz.timeLimit % 60).toString().padStart(2, '0')} time limit</span>
-                    </p>
+            <div className="quizzes-grid-student">
+              {availableQuizzes.map((quiz, index) => (
+                <div 
+                  key={quiz.id} 
+                  className="quiz-card-student"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="quiz-card-header-student">
+                    <h3 className="quiz-title-student">{quiz.title}</h3>
+                    <div className="quiz-status-student active">
+                      <i className="fas fa-circle"></i>
+                      Active
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => handleJoinAvailableQuiz(quiz.id)}
-                    className="join-quiz-btn"
-                  >
-                    Take Quiz
-                  </button>
+                  
+                  <div className="quiz-card-body-student">
+                    <p className="quiz-description-student">
+                      {quiz.description || 'No description provided'}
+                    </p>
+                    
+                    <div className="quiz-meta-student">
+                      <div className="meta-item-student">
+                        <i className="fas fa-question-circle"></i>
+                        <span>{quiz.questions?.length || 0} Questions</span>
+                      </div>
+                      <div className="meta-item-student">
+                        <i className="fas fa-clock"></i>
+                        <span>{Math.floor((quiz.timeLimit || 60) / 60)}:{((quiz.timeLimit || 60) % 60).toString().padStart(2, '0')} mins</span>
+                      </div>
+                      <div className="meta-item-student">
+                        <i className="fas fa-calendar"></i>
+                        <span>{formatDate(quiz.createdAt)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="quiz-code-display-student">
+                      <span className="code-label-student">Quiz Code:</span>
+                      <span className="code-value-student">{quiz.code}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="quiz-card-actions-student">
+                    <button 
+                      onClick={() => handleJoinAvailableQuiz(quiz.id)}
+                      className="take-quiz-btn-student"
+                    >
+                      <i className="fas fa-play"></i>
+                      Take Quiz
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p>No quizzes available yet. Check back later!</p>
+            <div className="no-quizzes-student">
+              <div className="no-quizzes-icon-student">
+                <i className="fas fa-clipboard-list"></i>
+              </div>
+              <h3>No Quizzes Available</h3>
+              <p>Check back later for new quizzes!</p>
+            </div>
           )}
         </div>
       </div>
