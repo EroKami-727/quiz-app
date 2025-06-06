@@ -1,7 +1,7 @@
 .take-quiz-container {
   min-height: 100vh;
   width: 100vw;
-  background: linear-gradient(to right, #4a00e0, #8e2de2);
+  background: linear-gradient(135deg, #3a1c71, #4776e6);
   color: white;
   padding: 2rem 1rem; /* Adjust padding for mobile */
   display: flex;
