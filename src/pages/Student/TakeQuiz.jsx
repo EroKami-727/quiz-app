@@ -133,7 +133,7 @@ const TakeQuiz = () => {
   };
 
   const handleReturnToHome = () => {
-    navigate('/student/attend-quiz');
+    navigate('/student/dashboard');
   };
 
   // Loading state
@@ -153,7 +153,7 @@ const TakeQuiz = () => {
         <h2>Error</h2>
         <p>{error}</p>
         <button onClick={handleReturnToHome} className="return-button">
-          Return to Home
+          Return to Dashboard
         </button>
       </div>
     );
@@ -166,7 +166,7 @@ const TakeQuiz = () => {
         <h2>Quiz Not Found</h2>
         <p>The quiz you're looking for doesn't exist.</p>
         <button onClick={handleReturnToHome} className="return-button">
-          Return to Home
+          Return to Dashboard
         </button>
       </div>
     );
@@ -194,7 +194,7 @@ const TakeQuiz = () => {
           </div>
           
           <button onClick={handleReturnToHome} className="return-button">
-            Return to Home
+            Return to Dashboard
           </button>
         </div>
       </div>

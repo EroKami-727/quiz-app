@@ -1,15 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getAuth, signOut } from 'firebase/auth';
-import { db } from '../../firebase';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
-import '../../styles/Student/StudentDashboard.css'
+import { signOut } from 'firebase/auth';
+import { db, auth } from '../../firebase';
 import {
-  PlayCircle, ChevronRight, Award, User, LogOut
-} from 'lucide-react';
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy
+} from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
+import '../../styles/Student/StudentDashboard.css';
+import { PlayCircle, Award } from 'lucide-react';
 
 const StudentDashboard = () => {
-  const auth = getAuth();
   const user = auth.currentUser;
   const navigate = useNavigate();
 
@@ -29,23 +32,30 @@ const StudentDashboard = () => {
     if (!user) return;
     setLoading(true);
     try {
+      // Fetch active quizzes
       const quizQuery = query(collection(db, 'quizzes'), where('active', '==', true));
       const quizSnapshot = await getDocs(quizQuery);
       const availableQuizzes = quizSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      const resultQuery = query(collection(db, 'quiz_results'), where('uid', '==', user.uid), orderBy('completedAt', 'desc'));
+      // Fetch quiz results for this user
+      const resultQuery = query(
+        collection(db, 'quiz_results'),
+        where('userId', '==', user.uid),
+        orderBy('completedAt', 'desc')
+      );
       const resultSnapshot = await getDocs(resultQuery);
       const recentQuizzes = resultSnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
-          quizTitle: data.quizTitle,
-          score: data.score,
+          quizTitle: data.quizTitle || 'Untitled Quiz',
+          score: data.score || 0,
           timeSpent: data.timeSpent || 0,
           completedAt: data.completedAt?.toDate() || new Date()
         };
       });
 
+      // Stats calculations
       const scores = recentQuizzes.map(r => r.score);
       const totalQuizzes = scores.length;
       const averageScore = totalQuizzes ? Math.round(scores.reduce((a, b) => a + b, 0) / totalQuizzes) : 0;
