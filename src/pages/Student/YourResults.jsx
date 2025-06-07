@@ -112,10 +112,10 @@ const YourResults = () => {
   };
 
   const getScoreClass = (percentage) => {
-    if (percentage >= 80) return 'excellent-score';
-    if (percentage >= 60) return 'good-score';
-    if (percentage >= 40) return 'okay-score';
-    return 'poor-score';
+    if (percentage >= 80) return 'student-excellent-score';
+    if (percentage >= 60) return 'student-good-score';
+    if (percentage >= 40) return 'student-okay-score';
+    return 'student-poor-score';
   };
 
   const formatDate = (dateString) => {
@@ -131,104 +131,104 @@ const YourResults = () => {
 
   if (loading) {
     return (
-      <div className="loading-screen">
-        <div className="loading-spinner"></div>
+      <div className="student-results-loading-screen">
+        <div className="student-results-loading-spinner"></div>
         <p>Loading your results...</p>
       </div>
     );
   }
 
   return (
-    <div className="your-results-container">
-      <button className="sign-out-top-btn" onClick={handleSignOut}>
+    <div className="student-results-container">
+      <button className="student-results-sign-out-btn" onClick={handleSignOut}>
         Sign Out
       </button>
 
-      <div className="your-results-content">
-        <div className="page-header">
-          <button className="back-btn" onClick={handleBackToDashboard}>
+      <div className="student-results-content">
+        <div className="student-results-page-header">
+          <button className="student-results-back-btn" onClick={handleBackToDashboard}>
             <i className="fas fa-arrow-left"></i>
             Back to Dashboard
           </button>
-          <h1 className="page-title">Your Quiz Results</h1>
-          <div className="results-count">
+          <h1 className="student-results-page-title">Your Quiz Results</h1>
+          <div className="student-results-count">
             {results.length} Result{results.length !== 1 ? 's' : ''}
           </div>
         </div>
 
         {error && (
-          <div className="error-message">
+          <div className="student-results-error-message">
             <i className="fas fa-exclamation-triangle"></i>
             {error}
           </div>
         )}
 
         {results.length === 0 ? (
-          <div className="no-results">
-            <div className="no-results-icon">📊</div>
+          <div className="student-results-no-results">
+            <div className="student-results-no-results-icon">📊</div>
             <h3>No Quiz Results Yet</h3>
             <p>You haven't completed any quizzes yet.</p>
             <button 
-              className="take-first-quiz-btn"
+              className="student-results-take-first-quiz-btn"
               onClick={() => navigate('/student/attend-quiz')}
             >
               Take Your First Quiz
             </button>
           </div>
         ) : (
-          <div className="results-grid">
+          <div className="student-results-grid">
             {results.map((result) => (
-              <div key={result.id} className="result-card">
-                <div className="result-card-header">
-                  <h3 className="quiz-title">{result.quizTitle}</h3>
-                  <div className={`score-badge ${getScoreClass(result.percentage)}`}>
+              <div key={result.id} className="student-result-card">
+                <div className="student-result-card-header">
+                  <h3 className="student-quiz-title">{result.quizTitle}</h3>
+                  <div className={`student-score-badge ${getScoreClass(result.percentage)}`}>
                     {result.percentage}%
                   </div>
                 </div>
 
-                <div className="result-card-body">
-                  <div className="result-meta">
-                    <div className="meta-item">
+                <div className="student-result-card-body">
+                  <div className="student-result-meta">
+                    <div className="student-meta-item">
                       <i className="fas fa-code"></i>
                       <span>Quiz Code: {result.quizCode}</span>
                     </div>
-                    <div className="meta-item">
+                    <div className="student-meta-item">
                       <i className="fas fa-check-circle"></i>
                       <span>{result.correctAnswers}/{result.totalQuestions} Correct</span>
                     </div>
-                    <div className="meta-item">
+                    <div className="student-meta-item">
                       <i className="fas fa-clock"></i>
                       <span>Time: {result.timeTaken}</span>
                     </div>
-                    <div className="meta-item">
+                    <div className="student-meta-item">
                       <i className="fas fa-calendar"></i>
                       <span>{formatDate(result.completedAt)}</span>
                     </div>
                   </div>
 
-                  <div className="score-breakdown">
-                    <div className="score-bar-container">
+                  <div className="student-score-breakdown">
+                    <div className="student-score-bar-container">
                       <div 
-                        className="score-bar-fill"
+                        className="student-score-bar-fill"
                         style={{ width: `${result.percentage}%` }}
                       ></div>
                     </div>
-                    <div className="score-text">
+                    <div className="student-score-text">
                       Score: {result.score}/{result.totalQuestions * 5} points
                     </div>
                   </div>
                 </div>
 
-                <div className="result-card-actions">
+                <div className="student-result-card-actions">
                   <button 
-                    className="action-btn primary"
+                    className="student-action-btn student-primary"
                     onClick={() => handleViewDetails(result)}
                     title="View Details"
                   >
                     <i className="fas fa-eye"></i>
                   </button>
                   <button 
-                    className="action-btn secondary"
+                    className="student-action-btn student-secondary"
                     onClick={() => navigate(`/student/quiz/${result.quizCode}`)}
                     title="Retake Quiz"
                   >
@@ -243,86 +243,86 @@ const YourResults = () => {
 
       {/* Detail Modal */}
       {showDetailModal && selectedResult && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
+        <div className="student-modal-overlay" onClick={closeModal}>
+          <div className="student-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="student-modal-header">
               <h2>Quiz Result Details</h2>
-              <button className="close-btn" onClick={closeModal}>
+              <button className="student-close-btn" onClick={closeModal}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
-            <div className="modal-body">
-              <div className="detail-section">
+            <div className="student-modal-body">
+              <div className="student-detail-section">
                 <h3>{selectedResult.quizTitle}</h3>
                 
-                <div className="result-summary">
-                  <div className="summary-grid">
-                    <div className="summary-item">
-                      <span className="label">Final Score</span>
-                      <span className={`value score ${getScoreClass(selectedResult.percentage)}`}>
+                <div className="student-result-summary">
+                  <div className="student-summary-grid">
+                    <div className="student-summary-item">
+                      <span className="student-label">Final Score</span>
+                      <span className={`student-value student-score ${getScoreClass(selectedResult.percentage)}`}>
                         {selectedResult.percentage}%
                       </span>
                     </div>
-                    <div className="summary-item">
-                      <span className="label">Points Earned</span>
-                      <span className="value">{selectedResult.score}/{selectedResult.totalQuestions * 5}</span>
+                    <div className="student-summary-item">
+                      <span className="student-label">Points Earned</span>
+                      <span className="student-value">{selectedResult.score}/{selectedResult.totalQuestions * 5}</span>
                     </div>
-                    <div className="summary-item">
-                      <span className="label">Correct Answers</span>
-                      <span className="value">{selectedResult.correctAnswers}/{selectedResult.totalQuestions}</span>
+                    <div className="student-summary-item">
+                      <span className="student-label">Correct Answers</span>
+                      <span className="student-value">{selectedResult.correctAnswers}/{selectedResult.totalQuestions}</span>
                     </div>
-                    <div className="summary-item">
-                      <span className="label">Time Taken</span>
-                      <span className="value">{selectedResult.timeTaken}</span>
+                    <div className="student-summary-item">
+                      <span className="student-label">Time Taken</span>
+                      <span className="student-value">{selectedResult.timeTaken}</span>
                     </div>
-                    <div className="summary-item">
-                      <span className="label">Quiz Code</span>
-                      <span className="value code">{selectedResult.quizCode}</span>
+                    <div className="student-summary-item">
+                      <span className="student-label">Quiz Code</span>
+                      <span className="student-value student-code">{selectedResult.quizCode}</span>
                     </div>
-                    <div className="summary-item">
-                      <span className="label">Completed On</span>
-                      <span className="value">{formatDate(selectedResult.completedAt)}</span>
+                    <div className="student-summary-item">
+                      <span className="student-label">Completed On</span>
+                      <span className="student-value">{formatDate(selectedResult.completedAt)}</span>
                     </div>
                   </div>
                 </div>
 
                 {selectedResult.questions && selectedResult.questions.length > 0 && (
-                  <div className="questions-review">
+                  <div className="student-questions-review">
                     <h4>Question Review ({selectedResult.questions.length} questions)</h4>
-                    <div className="questions-list">
+                    <div className="student-questions-list">
                       {selectedResult.questions.map((question, index) => (
-                        <div key={question.id} className="question-review">
-                          <div className={`question-number ${question.isCorrect ? 'correct' : 'incorrect'}`}>
+                        <div key={question.id} className="student-question-review">
+                          <div className={`student-question-number ${question.isCorrect ? 'student-correct' : 'student-incorrect'}`}>
                             {index + 1}
                             {question.isCorrect ? 
                               <i className="fas fa-check"></i> : 
                               <i className="fas fa-times"></i>
                             }
                           </div>
-                          <div className="question-content">
-                            <div className="question-text">{question.question}</div>
-                            <div className="answers-review">
+                          <div className="student-question-content">
+                            <div className="student-question-text">{question.question}</div>
+                            <div className="student-answers-review">
                               {question.options.map((option, optIndex) => (
                                 <div 
                                   key={optIndex} 
-                                  className={`option-review ${
-                                    optIndex === question.correctAnswer ? 'correct-answer' : ''
+                                  className={`student-option-review ${
+                                    optIndex === question.correctAnswer ? 'student-correct-answer' : ''
                                   } ${
-                                    optIndex === question.userAnswer ? 'user-answer' : ''
+                                    optIndex === question.userAnswer ? 'student-user-answer' : ''
                                   }`}
                                 >
-                                  <span className="option-letter">
+                                  <span className="student-option-letter">
                                     {String.fromCharCode(65 + optIndex)}.
                                   </span>
-                                  <span className="option-text">{option}</span>
+                                  <span className="student-option-text">{option}</span>
                                   {optIndex === question.correctAnswer && (
-                                    <span className="correct-icon">
+                                    <span className="student-correct-icon">
                                       <i className="fas fa-check-circle"></i>
                                     </span>
                                   )}
                                   {optIndex === question.userAnswer && optIndex !== question.correctAnswer && (
-                                    <span className="wrong-icon">
+                                    <span className="student-wrong-icon">
                                       <i className="fas fa-times-circle"></i>
                                     </span>
                                   )}

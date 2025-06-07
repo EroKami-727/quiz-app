@@ -96,40 +96,40 @@ const StudentDashboard = () => {
 
   if (loading) {
     return (
-      <div className="loading-screen">Loading Dashboard...</div>
+      <div className="student-loading-screen">Loading Dashboard...</div>
     );
   }
 
   return (
     <div className="student-dashboard-container">
-      <button onClick={handleSignOut} className="sign-out-top-btn">Sign Out</button>
+      <button onClick={handleSignOut} className="student-sign-out-top-btn">Sign Out</button>
       
       {/* Header */}
-      <div className="student-dashboard-header fade-in">
-        <div className="header-left">
+      <div className="student-dashboard-header student-fade-in">
+        <div className="student-header-left">
           <h1>📊 Student Dashboard</h1>
-          <p className="welcome-text">Welcome, {user?.displayName || user?.email}</p>
+          <p className="student-welcome-text">Welcome, {user?.displayName || user?.email}</p>
         </div>
       </div>
 
       {/* Main Dashboard Content */}
-      <div className="dashboard-content">
-        <div className="dashboard-grid">
+      <div className="student-dashboard-content">
+        <div className="student-dashboard-grid">
           
           {/* Primary Actions */}
-          <div className="dashboard-section primary-actions slide-up">
+          <div className="student-dashboard-section student-primary-actions student-slide-up">
             <h2>Quick Actions</h2>
-            <div className="action-cards">
-              <div className="action-card primary subtle-hover" onClick={() => navigate('/student/attend-quiz')}>
-                <div className="card-icon">
+            <div className="student-action-cards">
+              <div className="student-action-card student-primary student-subtle-hover" onClick={() => navigate('/student/attend-quiz')}>
+                <div className="student-card-icon">
                   <PlayCircle size={32} />
                 </div>
                 <h3>Attend Quiz</h3>
                 <p>Join available quizzes and test your knowledge</p>
               </div>
               
-              <div className="action-card secondary subtle-hover delay-1" onClick={() => navigate('/student/results')}>
-                <div className="card-icon">
+              <div className="student-action-card student-secondary student-subtle-hover student-delay-1" onClick={() => navigate('/student/results')}>
+                <div className="student-card-icon">
                   <BarChart3 size={32} />
                 </div>
                 <h3>Your Results</h3>
@@ -140,13 +140,13 @@ const StudentDashboard = () => {
 
           {/* Progress Summary Card */}
           {dashboardData.stats.totalQuizzes > 0 && (
-            <div className="dashboard-section progress-section slide-up delay-2">
-              <div className="progress-card">
-                <div className="progress-header">
-                  <div className="progress-icon">
+            <div className="student-dashboard-section student-progress-section student-slide-up student-delay-2">
+              <div className="student-progress-card">
+                <div className="student-progress-header">
+                  <div className="student-progress-icon">
                     <Award size={32} />
                   </div>
-                  <div className="progress-info">
+                  <div className="student-progress-info">
                     <h3>Great Progress!</h3>
                     <p>
                       You've completed <strong>{dashboardData.stats.totalQuizzes}</strong> quiz{dashboardData.stats.totalQuizzes !== 1 ? 'zes' : ''}.
@@ -156,32 +156,32 @@ const StudentDashboard = () => {
                 </div>
 
                 {/* Progress Bar */}
-                <div className="progress-bar-section">
-                  <label className="progress-label">Average Score</label>
-                  <div className="progress-bar-container">
+                <div className="student-progress-bar-section">
+                  <label className="student-progress-label">Average Score</label>
+                  <div className="student-progress-bar-container">
                     <div
-                      className="progress-bar-fill"
+                      className="student-progress-bar-fill"
                       style={{ width: `${dashboardData.stats.averageScore}%` }}
                     ></div>
                   </div>
-                  <p className="progress-percentage">
+                  <p className="student-progress-percentage">
                     {dashboardData.stats.averageScore}% average score
                   </p>
                 </div>
 
                 {/* Stats Grid */}
-                <div className="stats-grid">
-                  <div className="stat-item">
-                    <span className="stat-number">{dashboardData.stats.bestScore}%</span>
-                    <span className="stat-label">Best Score</span>
+                <div className="student-stats-grid">
+                  <div className="student-stat-item">
+                    <span className="student-stat-number">{dashboardData.stats.bestScore}%</span>
+                    <span className="student-stat-label">Best Score</span>
                   </div>
-                  <div className="stat-item">
-                    <span className="stat-number">{dashboardData.stats.totalQuizzes}</span>
-                    <span className="stat-label">Total Quizzes</span>
+                  <div className="student-stat-item">
+                    <span className="student-stat-number">{dashboardData.stats.totalQuizzes}</span>
+                    <span className="student-stat-label">Total Quizzes</span>
                   </div>
-                  <div className="stat-item">
-                    <span className="stat-number">{formatTime(dashboardData.stats.totalTimeSpent)}</span>
-                    <span className="stat-label">Time Spent</span>
+                  <div className="student-stat-item">
+                    <span className="student-stat-number">{formatTime(dashboardData.stats.totalTimeSpent)}</span>
+                    <span className="student-stat-label">Time Spent</span>
                   </div>
                 </div>
               </div>
@@ -189,22 +189,22 @@ const StudentDashboard = () => {
           )}
 
           {/* Available Quizzes */}
-          <div className="dashboard-section slide-up delay-3">
+          <div className="student-dashboard-section student-slide-up student-delay-3">
             <h2>Available Quizzes</h2>
-            <div className="available-quizzes-card">
+            <div className="student-available-quizzes-card">
               {dashboardData.availableQuizzes.length > 0 ? (
-                <div className="quiz-list">
+                <div className="student-quiz-list">
                   {dashboardData.availableQuizzes.map(quiz => (
-                    <div key={quiz.id} className="quiz-list-item fade-in-item">
-                      <div className="quiz-info">
+                    <div key={quiz.id} className="student-quiz-list-item student-fade-in-item">
+                      <div className="student-quiz-info">
                         <h3>{quiz.title}</h3>
-                        <p className="quiz-details">
+                        <p className="student-quiz-details">
                           {quiz.questions?.length || 0} questions • {formatTime(quiz.timeLimit || 0)}
                         </p>
                       </div>
                       <button
                         onClick={() => navigate(`/student/quiz/${quiz.id}`)}
-                        className="join-quiz-btn"
+                        className="student-join-quiz-btn"
                       >
                         Take Quiz
                       </button>
@@ -212,26 +212,26 @@ const StudentDashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div className="empty-state">
+                <div className="student-empty-state">
                   <p>No quizzes available at the moment.</p>
-                  <p className="empty-subtext">Check back later for new quizzes!</p>
+                  <p className="student-empty-subtext">Check back later for new quizzes!</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Recent Results */}
-          <div className="dashboard-section slide-up delay-4">
+          <div className="student-dashboard-section student-slide-up student-delay-4">
             <h2>Recent Results</h2>
-            <div className="recent-results-card">
+            <div className="student-recent-results-card">
               {dashboardData.recentQuizzes.length > 0 ? (
-                <div className="quiz-list">
+                <div className="student-quiz-list">
                   {dashboardData.recentQuizzes.slice(0, 5).map((result, index) => (
-                    <div key={result.id} className="quiz-list-item fade-in-item" style={{animationDelay: `${0.1 * index}s`}}>
-                      <div className="quiz-info">
+                    <div key={result.id} className="student-quiz-list-item student-fade-in-item" style={{animationDelay: `${0.1 * index}s`}}>
+                      <div className="student-quiz-info">
                         <h3>{result.quizTitle}</h3>
-                        <p className="quiz-details">
-                          Score: <span className={`score ${result.score >= 70 ? 'good-score' : result.score >= 50 ? 'okay-score' : 'poor-score'}`}>
+                        <p className="student-quiz-details">
+                          Score: <span className={`student-score ${result.score >= 70 ? 'student-good-score' : result.score >= 50 ? 'student-okay-score' : 'student-poor-score'}`}>
                             {result.score}%
                           </span> • {result.completedAt.toLocaleDateString()}
                         </p>
@@ -240,9 +240,9 @@ const StudentDashboard = () => {
                   ))}
                 </div>
               ) : (
-                <div className="empty-state">
+                <div className="student-empty-state">
                   <p>No quiz results yet.</p>
-                  <p className="empty-subtext">Take your first quiz to see results here!</p>
+                  <p className="student-empty-subtext">Take your first quiz to see results here!</p>
                 </div>
               )}
             </div>
