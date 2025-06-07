@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../firebase';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import '../../styles/Student/YourResults.css';
 
 const YourResults = () => {
@@ -12,81 +14,82 @@ const YourResults = () => {
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
 
-  // Mock data for demonstration - replace with actual API calls later
-  const mockResults = [
-    {
-      id: 1,
-      quizTitle: "JavaScript Fundamentals",
-      quizCode: "JS2024",
-      score: 85,
-      totalQuestions: 20,
-      correctAnswers: 17,
-      timeTaken: "15 minutes",
-      completedAt: "2024-12-15T10:30:00Z",
-      percentage: 85,
-      questions: [
-        {
-          id: 1,
-          question: "What is the correct way to declare a variable in JavaScript?",
-          options: ["var x = 5;", "variable x = 5;", "v x = 5;", "declare x = 5;"],
-          correctAnswer: 0,
-          userAnswer: 0,
-          isCorrect: true
-        },
-        {
-          id: 2,
-          question: "Which method is used to add an element to the end of an array?",
-          options: ["append()", "push()", "add()", "insert()"],
-          correctAnswer: 1,
-          userAnswer: 2,
-          isCorrect: false
-        }
-      ]
-    },
-    {
-      id: 2,
-      quizTitle: "React Components",
-      quizCode: "REACT01",
-      score: 92,
-      totalQuestions: 15,
-      correctAnswers: 14,
-      timeTaken: "12 minutes",
-      completedAt: "2024-12-14T14:20:00Z",
-      percentage: 93,
-      questions: []
-    },
-    {
-      id: 3,
-      quizTitle: "CSS Flexbox",
-      quizCode: "CSS2024",
-      score: 76,
-      totalQuestions: 18,
-      correctAnswers: 14,
-      timeTaken: "18 minutes",
-      completedAt: "2024-12-13T09:15:00Z",
-      percentage: 78,
-      questions: []
-    }
-  ];
-
   useEffect(() => {
-    // Simulate API call
     const fetchResults = async () => {
+      if (!currentUser) {
+        setError('User not authenticated');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        // Replace this with actual API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setResults(mockResults);
+        setError('');
+
+        // Query quiz results for the current user - matching actual database fields
+        const resultsRef = collection(db, 'quiz_results');
+        const q = query(
+          resultsRef,
+          where('userId', '==', currentUser.uid),
+          orderBy('completedAt', 'desc'),
+          limit(10)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const fetchedResults = [];
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          
+          // Convert Firestore timestamp to JavaScript Date if needed
+          let completedAt = data.completedAt;
+          if (data.completedAt && data.completedAt.toDate) {
+            completedAt = data.completedAt.toDate().toISOString();
+          } else if (data.completedAt && typeof data.completedAt === 'string') {
+            completedAt = data.completedAt;
+          } else {
+            completedAt = new Date().toISOString(); // Fallback
+          }
+
+          // Calculate basic stats from what's available
+          const answersArray = data.answers || [];
+          const totalQuestions = answersArray.length;
+          const score = data.score || 0;
+          const timeSpent = data.timeSpent || 0;
+          
+          // Calculate percentage based on score and total questions
+          // Assuming each question is worth equal points
+          const maxPossibleScore = totalQuestions > 0 ? (score / totalQuestions) * totalQuestions * 5 : 0; // Adjust multiplier as needed
+          const percentage = totalQuestions > 0 ? Math.round((score )) : 0;
+
+          fetchedResults.push({
+            id: doc.id,
+            quizTitle: data.displayname || 'Quiz Result', // Using displayname from your DB
+            quizCode: data.quizID || 'N/A', // Note: your DB has quizID (capital D)
+            score: score,
+            totalQuestions: totalQuestions,
+            correctAnswers: Math.floor(score / 5), // Assuming 5 points per correct answer
+            timeTaken: timeSpent ? `${timeSpent} minutes` : 'N/A',
+            completedAt: completedAt,
+            percentage: percentage,
+            userEmail: data.userEmail || currentUser.email,
+            answers: answersArray,
+            questions: [] // Your current DB doesn't seem to store questions
+          });
+        });
+
+        setResults(fetchedResults);
       } catch (err) {
-        setError('Failed to load quiz results');
-        console.error('Error fetching results:', err);
+        console.error('Error fetching quiz results:', err);
+        console.error('Error details:', err.message);
+        setError(`Failed to load quiz results: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchResults();
-  }, []);
+  }, [currentUser]);
 
   const handleSignOut = async () => {
     try {
@@ -119,14 +122,41 @@ const YourResults = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  const formatQuestionForReview = (question, userAnswer, correctAnswer) => {
+    return {
+      id: question.id || Math.random(),
+      question: question.question || question.text || 'Question text not available',
+      options: question.options || [],
+      correctAnswer: correctAnswer,
+      userAnswer: userAnswer,
+      isCorrect: userAnswer === correctAnswer
+    };
+  };
+
+  // Process questions for detailed view
+  const getProcessedQuestions = (result) => {
+    if (result.questions && result.questions.length > 0) {
+      return result.questions.map((question, index) => {
+        const userAnswer = result.answers && result.answers[index] ? result.answers[index] : null;
+        const correctAnswer = question.correctAnswer || 0;
+        return formatQuestionForReview(question, userAnswer, correctAnswer);
+      });
+    }
+    return [];
   };
 
   if (loading) {
@@ -214,7 +244,7 @@ const YourResults = () => {
                       ></div>
                     </div>
                     <div className="student-score-text">
-                      Score: {result.score}/{result.totalQuestions * 5} points
+                      Score: {result.score} points
                     </div>
                   </div>
                 </div>
@@ -266,11 +296,11 @@ const YourResults = () => {
                     </div>
                     <div className="student-summary-item">
                       <span className="student-label">Points Earned</span>
-                      <span className="student-value">{selectedResult.score}/{selectedResult.totalQuestions * 5}</span>
+                      <span className="student-value">{selectedResult.score}</span>
                     </div>
                     <div className="student-summary-item">
-                      <span className="student-label">Correct Answers</span>
-                      <span className="student-value">{selectedResult.correctAnswers}/{selectedResult.totalQuestions}</span>
+                      <span className="student-label">Questions Answered</span>
+                      <span className="student-value">{selectedResult.totalQuestions}</span>
                     </div>
                     <div className="student-summary-item">
                       <span className="student-label">Time Taken</span>
@@ -285,56 +315,27 @@ const YourResults = () => {
                       <span className="student-value">{formatDate(selectedResult.completedAt)}</span>
                     </div>
                   </div>
-                </div>
 
-                {selectedResult.questions && selectedResult.questions.length > 0 && (
-                  <div className="student-questions-review">
-                    <h4>Question Review ({selectedResult.questions.length} questions)</h4>
-                    <div className="student-questions-list">
-                      {selectedResult.questions.map((question, index) => (
-                        <div key={question.id} className="student-question-review">
-                          <div className={`student-question-number ${question.isCorrect ? 'student-correct' : 'student-incorrect'}`}>
-                            {index + 1}
-                            {question.isCorrect ? 
-                              <i className="fas fa-check"></i> : 
-                              <i className="fas fa-times"></i>
-                            }
+                  {/* Show answers array if available */}
+                  {selectedResult.answers && selectedResult.answers.length > 0 && (
+                    <div className="student-answers-summary">
+                      <h4>Your Answers</h4>
+                      <div className="student-answers-grid">
+                        {selectedResult.answers.map((answer, index) => (
+                          <div key={index} className="student-answer-item">
+                            <span className="student-question-num">Q{index + 1}:</span>
+                            <span className="student-answer-value">
+                              {typeof answer === 'number' ? 
+                                String.fromCharCode(65 + answer) : 
+                                answer
+                              }
+                            </span>
                           </div>
-                          <div className="student-question-content">
-                            <div className="student-question-text">{question.question}</div>
-                            <div className="student-answers-review">
-                              {question.options.map((option, optIndex) => (
-                                <div 
-                                  key={optIndex} 
-                                  className={`student-option-review ${
-                                    optIndex === question.correctAnswer ? 'student-correct-answer' : ''
-                                  } ${
-                                    optIndex === question.userAnswer ? 'student-user-answer' : ''
-                                  }`}
-                                >
-                                  <span className="student-option-letter">
-                                    {String.fromCharCode(65 + optIndex)}.
-                                  </span>
-                                  <span className="student-option-text">{option}</span>
-                                  {optIndex === question.correctAnswer && (
-                                    <span className="student-correct-icon">
-                                      <i className="fas fa-check-circle"></i>
-                                    </span>
-                                  )}
-                                  {optIndex === question.userAnswer && optIndex !== question.correctAnswer && (
-                                    <span className="student-wrong-icon">
-                                      <i className="fas fa-times-circle"></i>
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
