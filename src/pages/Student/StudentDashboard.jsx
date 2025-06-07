@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/Student/StudentDashboard.css';
-import { PlayCircle, Award } from 'lucide-react';
+import { PlayCircle, Award, BarChart3 } from 'lucide-react';
 
 const StudentDashboard = () => {
   const user = auth.currentUser;
@@ -101,117 +101,152 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className="attend-quiz-full-container">
+    <div className="student-dashboard-container">
       <button onClick={handleSignOut} className="sign-out-top-btn">Sign Out</button>
-      <div className="attend-quiz-content" style={{ width: '80vw' }}>
-        <h1>📊 Student Dashboard</h1>
-        <p className="welcome-text">Welcome, {user?.displayName || user?.email}</p>
-
-        {/* 🔗 Attend Quiz Button */}
-        <div style={{ alignSelf: 'flex-end', marginBottom: '1rem' }}>
-          <button
-            className="attend-icon-btn"
-            onClick={() => navigate('/student/attend-quiz')}
-          >
-            <PlayCircle size={18} />
-            Attend Quiz
-          </button>
+      
+      {/* Header */}
+      <div className="student-dashboard-header fade-in">
+        <div className="header-left">
+          <h1>📊 Student Dashboard</h1>
+          <p className="welcome-text">Welcome, {user?.displayName || user?.email}</p>
         </div>
+      </div>
 
-        {/* 📈 Progress Summary Card */}
-        {dashboardData.stats.totalQuizzes > 0 && (
-          <div className="mt-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg text-white p-8">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-white bg-opacity-20 rounded-full">
-                <Award className="h-8 w-8" />
+      {/* Main Dashboard Content */}
+      <div className="dashboard-content">
+        <div className="dashboard-grid">
+          
+          {/* Primary Actions */}
+          <div className="dashboard-section primary-actions slide-up">
+            <h2>Quick Actions</h2>
+            <div className="action-cards">
+              <div className="action-card primary subtle-hover" onClick={() => navigate('/student/attend-quiz')}>
+                <div className="card-icon">
+                  <PlayCircle size={32} />
+                </div>
+                <h3>Attend Quiz</h3>
+                <p>Join available quizzes and test your knowledge</p>
               </div>
-              <div>
-                <h3 className="text-xl font-bold">Great Progress!</h3>
-                <p className="text-indigo-100">
-                  You've completed <strong>{dashboardData.stats.totalQuizzes}</strong> quiz{dashboardData.stats.totalQuizzes !== 1 ? 'zes' : ''}.
-                  {dashboardData.stats.averageScore >= 70 && ' Keep it up!'}
-                </p>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div>
-              <label className="block mb-1 font-semibold">Average Score</label>
-              <div className="w-full bg-white bg-opacity-20 rounded-full h-4 overflow-hidden">
-                <div
-                  className="h-full bg-white bg-opacity-90 rounded-full transition-all"
-                  style={{ width: `${dashboardData.stats.averageScore}%` }}
-                ></div>
-              </div>
-              <p className="text-right text-sm text-indigo-100 mt-1">
-                {dashboardData.stats.averageScore}% average score
-              </p>
-            </div>
-
-            {/* Other Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-sm text-indigo-100">
-              <div className="flex flex-col items-center">
-                <span className="text-lg font-bold">{dashboardData.stats.bestScore}%</span>
-                <span>Best Score</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-lg font-bold">{dashboardData.stats.totalQuizzes}</span>
-                <span>Total Quizzes</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-lg font-bold">{formatTime(dashboardData.stats.totalTimeSpent)}</span>
-                <span>Time Spent</span>
+              
+              <div className="action-card secondary subtle-hover delay-1" onClick={() => navigate('/student/results')}>
+                <div className="card-icon">
+                  <BarChart3 size={32} />
+                </div>
+                <h3>Your Results</h3>
+                <p>View detailed performance and quiz history</p>
               </div>
             </div>
           </div>
-        )}
 
-        {/* 📋 Available Quizzes */}
-        <div className="available-quizzes-card">
-          <h2>Available Quizzes</h2>
-          {dashboardData.availableQuizzes.length > 0 ? (
-            <div className="quiz-list">
-              {dashboardData.availableQuizzes.map(quiz => (
-                <div key={quiz.id} className="quiz-list-item">
-                  <div className="quiz-info">
-                    <h3>{quiz.title}</h3>
-                    <p className="quiz-details">
-                      {quiz.questions?.length || 0} questions • {formatTime(quiz.timeLimit || 0)}
-                    </p>
+          {/* Progress Summary Card */}
+          {dashboardData.stats.totalQuizzes > 0 && (
+            <div className="dashboard-section progress-section slide-up delay-2">
+              <div className="progress-card">
+                <div className="progress-header">
+                  <div className="progress-icon">
+                    <Award size={32} />
                   </div>
-                  <button
-                    onClick={() => navigate(`/student/quiz/${quiz.id}`)}
-                    className="join-quiz-btn"
-                  >
-                    Take Quiz
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No quizzes available.</p>
-          )}
-        </div>
-
-        {/* 🏆 Recent Results */}
-        <div className="available-quizzes-card">
-          <h2>Recent Results</h2>
-          {dashboardData.recentQuizzes.length > 0 ? (
-            <div className="quiz-list">
-              {dashboardData.recentQuizzes.slice(0, 5).map(result => (
-                <div key={result.id} className="quiz-list-item">
-                  <div className="quiz-info">
-                    <h3>{result.quizTitle}</h3>
-                    <p className="quiz-details">
-                      Score: {result.score}% • {result.completedAt.toLocaleDateString()}
+                  <div className="progress-info">
+                    <h3>Great Progress!</h3>
+                    <p>
+                      You've completed <strong>{dashboardData.stats.totalQuizzes}</strong> quiz{dashboardData.stats.totalQuizzes !== 1 ? 'zes' : ''}.
+                      {dashboardData.stats.averageScore >= 70 && ' Keep it up!'}
                     </p>
                   </div>
                 </div>
-              ))}
+
+                {/* Progress Bar */}
+                <div className="progress-bar-section">
+                  <label className="progress-label">Average Score</label>
+                  <div className="progress-bar-container">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${dashboardData.stats.averageScore}%` }}
+                    ></div>
+                  </div>
+                  <p className="progress-percentage">
+                    {dashboardData.stats.averageScore}% average score
+                  </p>
+                </div>
+
+                {/* Stats Grid */}
+                <div className="stats-grid">
+                  <div className="stat-item">
+                    <span className="stat-number">{dashboardData.stats.bestScore}%</span>
+                    <span className="stat-label">Best Score</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">{dashboardData.stats.totalQuizzes}</span>
+                    <span className="stat-label">Total Quizzes</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">{formatTime(dashboardData.stats.totalTimeSpent)}</span>
+                    <span className="stat-label">Time Spent</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          ) : (
-            <p>No quiz results yet. Take a quiz to get started!</p>
           )}
+
+          {/* Available Quizzes */}
+          <div className="dashboard-section slide-up delay-3">
+            <h2>Available Quizzes</h2>
+            <div className="available-quizzes-card">
+              {dashboardData.availableQuizzes.length > 0 ? (
+                <div className="quiz-list">
+                  {dashboardData.availableQuizzes.map(quiz => (
+                    <div key={quiz.id} className="quiz-list-item fade-in-item">
+                      <div className="quiz-info">
+                        <h3>{quiz.title}</h3>
+                        <p className="quiz-details">
+                          {quiz.questions?.length || 0} questions • {formatTime(quiz.timeLimit || 0)}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/student/quiz/${quiz.id}`)}
+                        className="join-quiz-btn"
+                      >
+                        Take Quiz
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>No quizzes available at the moment.</p>
+                  <p className="empty-subtext">Check back later for new quizzes!</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Results */}
+          <div className="dashboard-section slide-up delay-4">
+            <h2>Recent Results</h2>
+            <div className="recent-results-card">
+              {dashboardData.recentQuizzes.length > 0 ? (
+                <div className="quiz-list">
+                  {dashboardData.recentQuizzes.slice(0, 5).map((result, index) => (
+                    <div key={result.id} className="quiz-list-item fade-in-item" style={{animationDelay: `${0.1 * index}s`}}>
+                      <div className="quiz-info">
+                        <h3>{result.quizTitle}</h3>
+                        <p className="quiz-details">
+                          Score: <span className={`score ${result.score >= 70 ? 'good-score' : result.score >= 50 ? 'okay-score' : 'poor-score'}`}>
+                            {result.score}%
+                          </span> • {result.completedAt.toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>No quiz results yet.</p>
+                  <p className="empty-subtext">Take your first quiz to see results here!</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

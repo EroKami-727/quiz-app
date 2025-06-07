@@ -1,15 +1,83 @@
-.attend-quiz-full-container {
+  .student-dashboard-container {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    width: 100vw;
+    flex-direction: column;
     padding: 2rem;
     background: linear-gradient(135deg, #3a1c71, #4776e6);
+    min-height: 100vh;
+    width: 100vw;
     color: white;
+    box-sizing: border-box;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    align-items: center;
   }
+  
+  .student-dashboard-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 80%, rgba(71, 118, 230, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  /* Animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInItem {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  /* Animation classes */
+  .fade-in {
+    animation: fadeIn 0.8s ease-out;
+  }
+  
+  .slide-up {
+    animation: slideUp 0.6s ease-out;
+  }
+  
+  .fade-in-item {
+    animation: fadeInItem 0.5s ease-out;
+    animation-fill-mode: both;
+  }
+  
+  /* Delay classes */
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.3s; }
+  .delay-4 { animation-delay: 0.4s; }
   
   .sign-out-top-btn {
     position: absolute;
@@ -17,141 +85,424 @@
     right: 20px;
     background-color: rgba(255, 255, 255, 0.2);
     color: white;
-    border-radius: 20px;
-    padding: 10px 20px;
-    font-weight: bold;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    padding: 12px 24px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     z-index: 10;
+    backdrop-filter: blur(10px);
   }
   
   .sign-out-top-btn:hover {
-    background-color: rgba(239, 9, 9, 0.926);
-    transform: translateY(-3px);
+    background-color: rgba(239, 68, 68, 0.8);
+    border-color: rgba(239, 68, 68, 0.8);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
   }
   
-  .attend-quiz-content {
+  /* Header Section */
+  .student-dashboard-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    gap: 2rem;
-    padding: 2rem;
-    border-radius: 15px;
-    background-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 10px 30px rgba(181, 64, 64, 0.437);
-    animation: fadeIn 0.5s ease-out;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .header-left h1 {
+    margin: 0;
+    font-size: 2.8rem;
+    font-weight: 700;
+    background: linear-gradient(45deg, #fff, #f0f0f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   }
   
   .welcome-text {
-    font-size: 1.1rem;
-    color: #ddd;
-    margin-bottom: 1rem;
+    font-size: 1.3rem;
+    margin-top: 0.5rem;
+    opacity: 0.9;
+    font-weight: 300;
     animation: fadeIn 0.7s ease-out 0.2s forwards;
-    opacity: 0;
   }
   
-  .attend-icon-btn {
+  /* Dashboard Layout */
+  .dashboard-content {
+    flex: 1;
+    width: 70vw;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 2.5rem;
+    color: #333;
+    box-shadow: 
+      0 20px 60px rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(20px);
+    position: relative;
+    z-index: 1;
+  }
+  
+  .dashboard-grid {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 10px 16px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    background-color: #4b70e2;
-    color: white;
-    border: none;
-    border-radius: 8px;
+    flex-direction: column;
+    gap: 3rem;
+  }
+  
+  /* Dashboard Sections */
+  .dashboard-section h2 {
+    color: #4776e6;
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+    position: relative;
+  }
+  
+  .dashboard-section h2::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 50px;
+    height: 4px;
+    background: linear-gradient(90deg, #4776e6, #3a1c71);
+    border-radius: 2px;
+  }
+  
+  /* Action Cards */
+  .action-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+  }
+  
+  .action-card {
+    flex: 1 1 280px;
+    background: #ffffff;
+    color: #333;
+    border-radius: 16px;
+    padding: 2rem;
     cursor: pointer;
     transition: all 0.3s ease;
-  }
-  
-  .attend-icon-btn:hover {
-    background-color: #000001;
-    transform: translateY(-2px);
-  }
-  
-  .available-quizzes-card {
-    background-color: white;
-    color: #333;
-    border-radius: 10px;
-    padding: 2rem;
-    width: 100%;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    margin-bottom: 1.5rem;
-    animation: fadeInUp 0.5s ease-out forwards;
-    opacity: 0;
-  }
-  
-  .available-quizzes-card h2 {
-    font-size: 1.8rem;
-    margin-bottom: 1.2rem;
     text-align: center;
+    box-shadow: 
+      0 10px 30px rgba(0, 0, 0, 0.08),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .action-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4776e6, #3a1c71);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+  
+  .action-card.subtle-hover:hover::before {
+    transform: scaleX(1);
+  }
+  
+  .action-card.subtle-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 
+      0 15px 35px rgba(0, 0, 0, 0.12),
+      0 0 0 1px rgba(71, 118, 230, 0.1);
+  }
+  
+  .action-card.primary {
+    background: linear-gradient(135deg, #4776e6 0%, #3a1c71 100%);
+    color: white;
+  }
+  
+  .action-card.secondary {
+    background: linear-gradient(135deg, #667eea 0%, #4776e6 100%);
+    color: white;
+  }
+  
+  .card-icon {
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .action-card h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  
+  .action-card p {
+    opacity: 0.9;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+  
+  /* Progress Card */
+  .progress-card {
+    background: linear-gradient(135deg, #4776e6, #3a1c71);
+    border-radius: 16px;
+    padding: 2rem;
+    color: white;
+    box-shadow: 0 15px 35px rgba(71, 118, 230, 0.3);
+  }
+  
+  .progress-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .progress-icon {
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .progress-info h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  
+  .progress-info p {
+    opacity: 0.9;
+  }
+  
+  .progress-bar-section {
+    margin-bottom: 2rem;
+  }
+  
+  .progress-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .progress-bar-container {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    height: 12px;
+    overflow: hidden;
+  }
+  
+  .progress-bar-fill {
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    transition: width 1s ease;
+  }
+  
+  .progress-percentage {
+    text-align: right;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    opacity: 0.9;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .stat-item {
+    text-align: center;
+  }
+  
+  .stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+  
+  .stat-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  
+  /* Quiz Cards */
+  .available-quizzes-card,
+  .recent-results-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 2rem;
+    color: #333;
+    box-shadow: 
+      0 10px 30px rgba(0, 0, 0, 0.08),
+      0 0 0 1px rgba(0, 0, 0, 0.05);
   }
   
   .quiz-list {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
+    gap: 1rem;
   }
   
   .quiz-list-item {
-    background-color: #f7f9fc;
-    border-radius: 10px;
+    background: #f8fafc;
+    border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: all 0.3s ease;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .quiz-list-item:hover {
+    background: #f1f5f9;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   }
   
   .quiz-info h3 {
-    margin: 0;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1e293b;
   }
   
   .quiz-details {
     font-size: 0.9rem;
-    color: #666;
-    margin-top: 0.5rem;
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    color: #64748b;
+    margin: 0;
+  }
+  
+  .score {
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  
+  .good-score {
+    background: #dcfce7;
+    color: #16a34a;
+  }
+  
+  .okay-score {
+    background: #fef3c7;
+    color: #d97706;
+  }
+  
+  .poor-score {
+    background: #fee2e2;
+    color: #dc2626;
   }
   
   .join-quiz-btn {
-    background-color: #4b70e2;
+    background: linear-gradient(135deg, #4776e6, #3a1c71);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     padding: 10px 20px;
-    font-weight: bold;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    white-space: nowrap;
   }
   
   .join-quiz-btn:hover {
-    background-color: #3a5cc1;
     transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(71, 118, 230, 0.3);
   }
   
+  /* Empty States */
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+  }
+  
+  .empty-state p {
+    margin: 0.5rem 0;
+  }
+  
+  .empty-subtext {
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  
+  /* Loading Screen */
   .loading-screen {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     width: 100vw;
-    background: linear-gradient(to right, #4a00e0, #8e2de2);
+    background: linear-gradient(135deg, #3a1c71, #4776e6);
     color: white;
     font-size: 1.5rem;
+    font-weight: 600;
   }
   
-  /* Animations */
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+  /* Responsive */
+  @media (max-width: 768px) {
+    .student-dashboard-container {
+      padding: 1rem;
+    }
+  
+    .student-dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  
+    .header-left h1 {
+      font-size: 2.2rem;
+    }
+  
+    .dashboard-content {
+      padding: 1.5rem;
+    }
+  
+    .action-cards {
+      flex-direction: column;
+    }
+  
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  
+    .quiz-list-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  
+    .join-quiz-btn {
+      align-self: stretch;
+      text-align: center;
+    }
   }
   
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
+  @media (max-width: 480px) {
+    .header-left h1 {
+      font-size: 1.8rem;
+    }
   
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .action-card {
+      padding: 1.5rem;
+    }
+  }
