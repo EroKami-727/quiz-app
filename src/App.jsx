@@ -9,6 +9,7 @@ import CreateQuiz from './pages/Teacher/CreateQuiz';
 import TeacherHome from './pages/Teacher/TeacherHome';
 import YourQuizzes from './pages/Teacher/YourQuizzes';
 import StudentDashboard from './pages/Student/StudentDashboard.jsx';
+import YourResults from './pages/Student/YourResults';
 
 import './App.css';
 import { getAuth } from 'firebase/auth';
@@ -85,6 +86,14 @@ function App() {
               <YourQuizzes />
             </ProtectedRoute>
           }
+        />
+        <Route 
+          path="/student/results" 
+          element={
+            <ProtectedRoute>
+              <YourResults />
+            </ProtectedRoute>
+          } 
         />
         
         {/* Fallback route */}
