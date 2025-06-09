@@ -509,3 +509,46 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* New CSS for Back to Dashboard Button */
+.back-dashboard-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-dashboard-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.back-dashboard-btn i {
+  font-size: 0.9em;
+}
+
+/* Adjustments for smaller screens */
+@media (max-width: 480px) {
+  .back-dashboard-btn {
+    top: 70px; /* Position below the sign out button */
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .sign-out-top-btn {
+     /* Adjust if necessary to avoid overlap */
+     top: 20px;
+  }
+}
