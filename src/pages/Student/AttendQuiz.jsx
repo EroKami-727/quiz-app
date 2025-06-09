@@ -1,4 +1,3 @@
-// src/pages/Student/AttendQuiz.jsx
 import React, { useState, useEffect } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
@@ -53,6 +52,10 @@ const AttendQuiz = () => {
       .catch((error) => {
         console.error('Sign out error:', error);
       });
+  };
+
+  const handleGoToDashboard = () => {
+    navigate('/student/dashboard'); // Navigates to the student dashboard
   };
 
   const handleJoinQuiz = async () => {
@@ -116,6 +119,10 @@ const AttendQuiz = () => {
       <button onClick={handleSignOut} className="sign-out-top-btn">
         Sign Out
       </button>
+      <button onClick={handleGoToDashboard} className="back-dashboard-btn">
+        <i className="fas fa-arrow-left"></i> Back to Dashboard
+      </button>
+      
       <div className="attend-quiz-content">
         <h1>Ready to Quiz?</h1>
         <p className="welcome-text">Welcome, {user?.email || 'Student'}</p>
