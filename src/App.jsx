@@ -56,7 +56,7 @@ function App() {
           } 
         />
         <Route 
-          path="/student/quiz/:quizCode" 
+          path="/student/quiz/:quizId" 
           element={
             <ProtectedRoute>
               <TakeQuiz />
