@@ -176,3 +176,185 @@
 .question-dot.answered {
   background-color: #81c784;
 }
+
+/* ADD THIS to your existing CSS file for the results screen */
+
+.quiz-completed-container {
+  background: white;
+  color: #333;
+  padding: 2.5rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.score-display {
+  margin-top: 1.5rem;
+}
+
+.score-display h2 {
+    font-size: 1.8rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.score-circle {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  margin: 1rem auto;
+  width: 180px;
+  height: 180px;
+  background: linear-gradient(145deg, #4776e6, #8e54e9);
+  border-radius: 50%;
+  color: white;
+  box-shadow: 0 8px 25px rgba(71, 118, 230, 0.3);
+}
+
+.score-value {
+  font-size: 4rem;
+  font-weight: 700;
+}
+
+.score-divider {
+  font-size: 2rem;
+  margin: 0 0.5rem;
+  opacity: 0.7;
+}
+
+.score-max {
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.score-points-label {
+    color: #555;
+    font-size: 1.1rem;
+    margin-top: -0.5rem;
+}
+
+.pending-review-text {
+  margin-top: 1.5rem;
+  font-size: 1rem;
+  color: #c0392b;
+  background-color: rgba(231, 76, 60, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(231, 76, 60, 0.2);
+}
+
+.return-button {
+  margin-top: 2rem;
+  padding: 12px 30px;
+  border: none;
+  font-weight: bold;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  background: linear-gradient(to right, #4776e6, #8e54e9);
+  color: white;
+  transition: all 0.3s;
+}
+
+.return-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(71, 118, 230, 0.4);
+}
+
+/* ADD THIS to TakeQuiz.css */
+
+/* Styles for the Quiz Introduction Screen */
+.quiz-intro-container {
+  background: white;
+  color: #333; /* Fixes the invisible text issue */
+  padding: 2.5rem;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.quiz-intro-container h1 {
+  font-size: 2.2rem;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.quiz-description {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.quiz-info {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background-color: #f7f9fc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 2.5rem;
+  text-align: left;
+  border: 1px solid #e1e5ea;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-item span {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+}
+
+.info-item strong {
+  font-size: 1.2rem;
+  color: #34495e;
+}
+
+.start-quiz-btn {
+  width: 100%;
+  padding: 15px 30px;
+  border: none;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  background: linear-gradient(to right, #4776e6, #8e54e9);
+  color: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.start-quiz-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(71, 118, 230, 0.4);
+}
+
+.sign-out-top-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sign-out-top-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
