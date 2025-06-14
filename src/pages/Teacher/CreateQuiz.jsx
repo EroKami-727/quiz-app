@@ -4,7 +4,7 @@ import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/Teacher/CreateQuiz.css';
-import { FaTrashAlt, FaPlus, FaClipboard, FaTimes } from 'react-icons/fa';
+import { FaTrashAlt, FaPlus, FaClipboard, FaTimes, FaArrowLeft } from 'react-icons/fa'; // Added FaArrowLeft
 
 // Default structures with points, no per-question timeLimit
 const defaultMCQ = { type: 'MCQ', text: '', options: ['', '', '', ''], correctOption: 0, points: 10 };
@@ -22,7 +22,7 @@ const CreateQuiz = () => {
 
     const [quizTitle, setQuizTitle] = useState('');
     const [quizDescription, setQuizDescription] = useState('');
-    const [overallTimeLimit, setOverallTimeLimit] = useState(300); // Only overall time limit
+    const [overallTimeLimit, setOverallTimeLimit] = useState(300);
     const [questions, setQuestions] = useState([{ ...defaultMCQ }]);
 
     const [isPublished, setIsPublished] = useState(false);
@@ -71,7 +71,6 @@ const CreateQuiz = () => {
         const newQuestions = [...questions];
         const currentQuestion = newQuestions[index];
         let newQuestionData;
-        // Preserve text and points when changing type
         const commonProps = { text: currentQuestion.text, points: currentQuestion.points };
         switch (newType) {
             case 'FILL_IN_THE_BLANK': newQuestionData = { ...defaultFillBlank, ...commonProps }; break;
@@ -99,14 +98,22 @@ const CreateQuiz = () => {
             setError("Quiz title is required.");
             return false;
         }
-        for (const q of questions) {
+        for (const [index, q] of questions.entries()) {
             if (!q.text.trim()) {
-                setError("All questions must have text.");
+                setError(`Question ${index + 1} must have text.`);
                 return false;
             }
-            if ((q.points || 0) <= 0) {
-                setError("All questions must have points greater than 0.");
+            if (!q.points || parseInt(q.points, 10) <= 0) {
+                setError(`Question ${index + 1} must have points greater than 0.`);
                 return false;
+            }
+            if (q.type === 'MCQ' && q.options.some(opt => !opt.trim())) {
+                 setError(`All options for MCQ Question ${index + 1} must be filled.`);
+                 return false;
+            }
+            if (q.type === 'FILL_IN_THE_BLANK' && q.answers.length === 0) {
+                 setError(`Fill-in-the-blank Question ${index + 1} must have at least one acceptable answer.`);
+                 return false;
             }
         }
         setError('');
@@ -143,10 +150,11 @@ const CreateQuiz = () => {
                             questionToSave.correctOption = q.correctOption;
                             break;
                         case 'FILL_IN_THE_BLANK':
-                            questionToSave.answers = q.answers.filter(Boolean);
+                            questionToSave.answers = q.answers.filter(Boolean); // Filter out empty strings from answers
                             questionToSave.caseSensitive = q.caseSensitive;
                             break;
                         case 'PARAGRAPH':
+                            // PARAGRAPH questions won't have an 'answer' field, just grading keywords
                             questionToSave.gradingKeywords = q.gradingKeywords.filter(Boolean);
                             break;
                         default: break;
@@ -180,11 +188,15 @@ const CreateQuiz = () => {
 
     if (loading) return <div className="loading-screen">Loading...</div>;
 
-    // --- RENDER LOGIC ---
     return (
         <div className="create-quiz-container">
             <button onClick={handleSignOut} className="sign-out-top-btn">Sign Out</button>
             <div className="create-quiz-content">
+                {/* --- NEW: Back Button --- */}
+                <button onClick={() => navigate('/teacher/dashboard')} className="back-btn">
+                    <FaArrowLeft /> Back to Dashboard
+                </button>
+                
                 {!isPublished ? (
                     <>
                         <div className="quiz-form-section">
@@ -221,19 +233,42 @@ const CreateQuiz = () => {
                                     <div className="form-group">
                                         <label htmlFor={`question-text-${qIndex}`}>Question Text</label>
                                         <input id={`question-text-${qIndex}`} type="text" value={q.text} onChange={(e) => handleQuestionFieldChange(qIndex, 'text', e.target.value)} placeholder="e.g., The powerhouse of the cell is the ___." className="form-control" />
-                                        {q.type === 'FILL_IN_THE_BLANK' && <small className="input-instruction">Use three underscores <code>___</code> to show students where the blank is.</small>}
+                                        {q.type === 'FILL_IN_THE_BLANK' && <small className="input-instruction">Use underscores <code>___</code> to show students where the blank is.</small>}
                                     </div>
 
-                                    {/* Question Body with Points Input */}
                                     <div className="question-body">
                                         <div className="form-group points-group">
                                             <label htmlFor={`question-points-${qIndex}`}>Points</label>
                                             <input id={`question-points-${qIndex}`} type="number" value={q.points} onChange={(e) => handleQuestionFieldChange(qIndex, 'points', e.target.value)} onBlur={(e) => handleQuestionFieldChange(qIndex, 'points', Math.max(1, parseInt(e.target.value, 10) || 1))} className="form-control points-input" />
                                         </div>
 
-                                        {q.type === 'MCQ' && <div className="options-container slide-down">{/* ... MCQ options JSX ... */}</div>}
-                                        {q.type === 'FILL_IN_THE_BLANK' && <div className="fill-blank-container slide-down">{/* ... FillBlank JSX ... */}</div>}
-                                        {q.type === 'PARAGRAPH' && <div className="paragraph-container slide-down">{/* ... Paragraph JSX ... */}</div>}
+                                        {/* --- RENDERED: Question type specific inputs --- */}
+                                        {q.type === 'MCQ' && <div className="options-container slide-down">
+                                            <h4>Options (Mark the correct one)</h4>
+                                            {q.options.map((opt, oIndex) => (
+                                                <div key={oIndex} className="option-item">
+                                                    <input id={`correct-option-${qIndex}-${oIndex}`} type="radio" name={`correct-option-${qIndex}`} checked={q.correctOption === oIndex} onChange={() => handleQuestionFieldChange(qIndex, 'correctOption', oIndex)} className="form-check-input" />
+                                                    <input type="text" value={opt} onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)} placeholder={`Option ${oIndex + 1}`} className="form-control" />
+                                                </div>
+                                            ))}
+                                        </div>}
+                                        {q.type === 'FILL_IN_THE_BLANK' && <div className="fill-blank-container slide-down">
+                                            <div className="form-group">
+                                                <label htmlFor={`fill-answers-${qIndex}`}>Acceptable Answers (comma-separated)</label>
+                                                <input id={`fill-answers-${qIndex}`} type="text" value={q.answers.join(',')} onChange={(e) => handleCommaSeparatedChange(qIndex, 'answers', e.target.value)} placeholder="e.g., mitochondria,Mitochondria" className="form-control"/>
+                                            </div>
+                                            <div className="form-check-inline">
+                                                <input id={`case-sensitive-${qIndex}`} type="checkbox" checked={q.caseSensitive} onChange={(e) => handleQuestionFieldChange(qIndex, 'caseSensitive', e.target.checked)} />
+                                                <label htmlFor={`case-sensitive-${qIndex}`}>Answers are case-sensitive</label>
+                                            </div>
+                                        </div>}
+                                        {q.type === 'PARAGRAPH' && <div className="paragraph-container slide-down">
+                                            <div className="form-group">
+                                                <label htmlFor={`keywords-${qIndex}`}>Grading Keywords (Optional, comma-separated)</label>
+                                                <input id={`keywords-${qIndex}`} type="text" value={q.gradingKeywords.join(',')} onChange={(e) => handleCommaSeparatedChange(qIndex, 'gradingKeywords', e.target.value)} placeholder="e.g., sunlight, chlorophyll, oxygen" className="form-control" />
+                                                <small className="input-instruction">These keywords will be shown to you during grading.</small>
+                                            </div>
+                                        </div>}
                                     </div>
                                 </div>
                             ))}
@@ -243,7 +278,21 @@ const CreateQuiz = () => {
                         <div className="form-actions"><button onClick={handlePublishQuiz} className="publish-quiz-btn" type="button" disabled={isSubmitting}>{isSubmitting ? 'Publishing...' : 'Publish Quiz'}</button></div>
                     </>
                 ) : (
-                     <div className="quiz-published-section">{/* ... Published JSX ... */}</div>
+                    /* --- RESTORED: Post-publish screen --- */
+                    <div className="quiz-published-section">
+                        <div className="success-message">{successMessage}</div>
+                        <div className="quiz-code-container">
+                            <h2>Your Quiz Code</h2>
+                            <div className="quiz-code">{generatedCode}</div>
+                            <p>Share this code with students for them to join.</p>
+                            <button onClick={() => { navigator.clipboard.writeText(generatedCode); setSuccessMessage('Code Copied!'); setTimeout(() => setSuccessMessage('Quiz published successfully!'), 2000); }} className="copy-code-btn" type="button">
+                                <FaClipboard /> Copy Code
+                            </button>
+                        </div>
+                        <button onClick={handleCreateNewQuiz} className="new-quiz-btn" type="button">
+                            Create Another Quiz
+                        </button>
+                    </div>
                 )}
             </div>
         </div>
