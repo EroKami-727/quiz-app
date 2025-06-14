@@ -809,3 +809,73 @@
       width: 100%;
     }
   }
+
+  /* Previous styles for .your-quizzes-container, etc. remain the same */
+
+/* ... (all existing CSS up to action-btn) ... */
+
+.quiz-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+  flex-wrap: wrap; /* Added for better responsiveness */
+}
+
+.action-btn {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.action-btn.primary {
+  background-color: #e85a19;
+  color: white;
+}
+
+.action-btn.secondary {
+  background-color: #4b70e2;
+  color: white;
+}
+
+.action-btn.info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+/* --- NEW STYLE FOR GRADE BUTTON --- */
+.action-btn.grade {
+  background-color: #673ab7; /* A nice purple */
+  color: white;
+}
+
+.action-btn.success {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.action-btn.warning {
+  background-color: #ff9800;
+  color: white;
+}
+
+.action-btn.danger {
+  background-color: #f44336;
+  color: white;
+}
+
+/* ... (rest of the CSS file remains the same) ... */
