@@ -815,3 +815,143 @@
 .student-modal-content::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #3a1c71, #4776e6);
 }
+
+/* Add these styles to your existing YourResults.css file */
+/* They will either add new rules or override existing ones */
+
+/* PENDING STATUS BADGE ON CARD */
+.student-score-badge.student-pending-score {
+  background: linear-gradient(135deg, #78909c, #546e7a);
+  color: white;
+  box-shadow: 0 4px 15px rgba(120, 144, 156, 0.3);
+  font-size: 0.9rem;
+}
+
+/* INNER MODAL LOADING SPINNER */
+.student-results-loading-screen-inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    color: #666;
+}
+
+/* NEW STYLES FOR DETAILED REVIEW MODAL */
+.student-questions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.student-question-review-item {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.student-question-review-item.student-correct {
+    border-left: 5px solid #4caf50;
+}
+.student-question-review-item.student-incorrect {
+    border-left: 5px solid #f44336;
+}
+.student-question-review-item.student-pending {
+    border-left: 5px solid #ff9800; /* For paragraph questions before grading */
+}
+
+.student-question-review-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.student-question-number {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 0.9rem;
+    background-color: #e2e8f0;
+    color: #475569;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.student-correct .student-question-number { background-color: #4caf50; color: white; }
+.student-incorrect .student-question-number { background-color: #f44336; color: white; }
+.student-pending .student-question-number { background-color: #ff9800; color: white; }
+
+
+.student-question-text {
+    flex-grow: 1;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.student-question-points {
+    font-weight: 700;
+    color: #4776e6;
+    background: #eef2ff;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.9rem;
+}
+.student-incorrect .student-question-points { color: #f44336; background: #ffebee;}
+.student-pending .student-question-points { color: #f57c00; background: #fff8e1;}
+
+
+.student-question-review-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-left: 52px; /* Align with question text */
+}
+
+.student-answer-review-box {
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.student-answer-review-box label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.student-answer-review-box p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* User's Answer Styling */
+.student-user-answer {
+    background-color: #eef2ff;
+    border: 1px solid #c7d2fe;
+}
+.student-user-answer label { color: #4338ca; }
+.student-user-answer p { color: #3730a3; }
+
+/* Correct Answer Styling */
+.student-correct-answer {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+.student-correct-answer label { color: #166534; }
+.student-correct-answer p { color: #15803d; }
+
+/* Teacher Feedback Styling */
+.student-teacher-feedback {
+    background-color: #fffbeb;
+    border: 1px solid #fde68a;
+}
+.student-teacher-feedback label { color: #b45309; }
+.student-teacher-feedback p { font-style: italic; color: #92400e; }

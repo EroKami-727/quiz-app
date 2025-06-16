@@ -66,7 +66,7 @@ const YourQuizzes = () => {
   };
   
   const handleBackToHome = () => {
-    navigate('/teacher/dashboard');
+    navigate('/teacher/home');
   };
   
   const handleViewDetails = (quiz) => {
