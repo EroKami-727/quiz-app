@@ -5,12 +5,17 @@ import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../../styles/Teacher/CreateQuiz.css';
-import { FaTrashAlt, FaPlus, FaClipboard, FaTimes, FaArrowLeft } from 'react-icons/fa';
+import { FaTrashAlt, FaPlus, FaClipboard, FaTimes, FaArrowLeft, FaGripLines } from 'react-icons/fa';
 
 // Default structures for each question type
 const defaultMCQ = { type: 'MCQ', text: '', options: ['', '', '', ''], correctOption: 0, points: 10 };
 const defaultFillBlank = { type: 'FILL_IN_THE_BLANK', text: '', answers: [], caseSensitive: false, points: 10 };
 const defaultParagraph = { type: 'PARAGRAPH', text: '', gradingKeywords: [], points: 20 };
+// --- NEW ---
+const defaultMatch = { type: 'MATCH_THE_FOLLOWING', text: '', pairs: [{ prompt: '', option: '' }], points: 10 };
+const defaultCategorize = { type: 'CATEGORIZE', text: '', categories: [], items: [{ text: '', category: '' }], points: 10 };
+const defaultReorder = { type: 'REORDER', text: '', items: ['', ''], points: 10 };
+const defaultComprehension = { type: 'READING_COMPREHENSION', text: '', passage: '', subQuestions: [], points: 20 };
 
 const CreateQuiz = () => {
     const navigate = useNavigate();
@@ -25,6 +30,11 @@ const CreateQuiz = () => {
             case 'MCQ': return { ...defaultMCQ };
             case 'FILL_IN_THE_BLANK': return { ...defaultFillBlank };
             case 'PARAGRAPH': return { ...defaultParagraph };
+            // --- NEW ---
+            case 'MATCH_THE_FOLLOWING': return { ...defaultMatch, pairs: [{ prompt: '', option: '' }] };
+            case 'CATEGORIZE': return { ...defaultCategorize, categories: [], items: [{ text: '', category: '' }] };
+            case 'REORDER': return { ...defaultReorder, items: ['', ''] };
+            case 'READING_COMPREHENSION': return { ...defaultComprehension, subQuestions: [] };
             default: return { ...defaultMCQ };
         }
     };
@@ -81,14 +91,10 @@ const CreateQuiz = () => {
         const newQuestions = [...questions];
         const currentQuestion = newQuestions[index];
         const commonProps = { text: currentQuestion.text, points: currentQuestion.points };
-        switch (newType) {
-            case 'FILL_IN_THE_BLANK': newQuestions[index] = { ...defaultFillBlank, ...commonProps }; break;
-            case 'PARAGRAPH': newQuestions[index] = { ...defaultParagraph, ...commonProps }; break;
-            default: newQuestions[index] = { ...defaultMCQ, ...commonProps }; break;
-        }
+        newQuestions[index] = { ...getInitialQuestion(newType), ...commonProps };
         setQuestions(newQuestions);
     };
-
+    
     const handleOptionChange = (qIndex, oIndex, value) => {
         const newQuestions = [...questions];
         newQuestions[qIndex].options[oIndex] = value;
@@ -101,6 +107,89 @@ const CreateQuiz = () => {
         setQuestions(newQuestions);
     };
 
+    // --- NEW: Specific handlers for new question types ---
+    
+    // For Match the Following
+    const handleAddMatchPair = qIndex => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].pairs.push({ prompt: '', option: '' });
+        setQuestions(newQuestions);
+    };
+    const handleRemoveMatchPair = (qIndex, pairIndex) => {
+        const newQuestions = [...questions];
+        if (newQuestions[qIndex].pairs.length > 1) {
+            newQuestions[qIndex].pairs.splice(pairIndex, 1);
+            setQuestions(newQuestions);
+        }
+    };
+    const handleMatchPairChange = (qIndex, pairIndex, field, value) => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].pairs[pairIndex][field] = value;
+        setQuestions(newQuestions);
+    };
+
+    // For Categorize
+    const handleAddCategorizeItem = qIndex => {
+        const newQuestions = [...questions];
+        const firstCategory = newQuestions[qIndex].categories[0] || '';
+        newQuestions[qIndex].items.push({ text: '', category: firstCategory });
+        setQuestions(newQuestions);
+    };
+    const handleRemoveCategorizeItem = (qIndex, itemIndex) => {
+        const newQuestions = [...questions];
+        if (newQuestions[qIndex].items.length > 1) {
+            newQuestions[qIndex].items.splice(itemIndex, 1);
+            setQuestions(newQuestions);
+        }
+    };
+    const handleCategorizeItemChange = (qIndex, itemIndex, field, value) => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].items[itemIndex][field] = value;
+        setQuestions(newQuestions);
+    };
+
+    // For Reorder
+    const handleAddReorderItem = qIndex => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].items.push('');
+        setQuestions(newQuestions);
+    };
+    const handleRemoveReorderItem = (qIndex, itemIndex) => {
+        const newQuestions = [...questions];
+        if (newQuestions[qIndex].items.length > 2) {
+            newQuestions[qIndex].items.splice(itemIndex, 1);
+            setQuestions(newQuestions);
+        }
+    };
+    const handleReorderItemChange = (qIndex, itemIndex, value) => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].items[itemIndex] = value;
+        setQuestions(newQuestions);
+    };
+    
+    // For Reading Comprehension
+    const handleAddSubQuestion = (qIndex) => {
+        const newQuestions = [...questions];
+        // For simplicity, we'll only allow adding MCQ as sub-questions for now
+        newQuestions[qIndex].subQuestions.push({ type: 'MCQ', text: '', options: ['', ''], correctOption: 0, points: 5 });
+        setQuestions(newQuestions);
+    };
+     const handleRemoveSubQuestion = (qIndex, subQIndex) => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].subQuestions.splice(subQIndex, 1);
+        setQuestions(newQuestions);
+    };
+    const handleSubQuestionChange = (qIndex, subQIndex, field, value) => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].subQuestions[subQIndex][field] = value;
+        setQuestions(newQuestions);
+    };
+    const handleSubQuestionOptionChange = (qIndex, subQIndex, optIndex, value) => {
+        const newQuestions = [...questions];
+        newQuestions[qIndex].subQuestions[subQIndex].options[optIndex] = value;
+        setQuestions(newQuestions);
+    };
+
     const validateQuiz = () => { /* ...validation logic... */ return true; };
 
     const handlePublishQuiz = async () => {
@@ -108,7 +197,15 @@ const CreateQuiz = () => {
         setIsSubmitting(true);
         try {
             const quizCode = generateQuizCode();
-            const totalPoints = questions.reduce((sum, q) => sum + (parseInt(q.points, 10) || 0), 0);
+            const totalPoints = questions.reduce((sum, q) => {
+                if(q.type === 'READING_COMPREHENSION') {
+                    // For comprehension, sum points of sub-questions
+                    const subPoints = q.subQuestions.reduce((subSum, subQ) => subSum + (parseInt(subQ.points, 10) || 0), 0);
+                    return sum + subPoints;
+                }
+                return sum + (parseInt(q.points, 10) || 0);
+            }, 0);
+            
             const quizData = {
                 title: quizTitle,
                 description: quizDescription,
@@ -122,10 +219,35 @@ const CreateQuiz = () => {
                 totalPoints: totalPoints,
                 questions: questions.map(q => {
                     const questionToSave = { type: q.type, text: q.text, points: parseInt(q.points, 10) || 0 };
+                    if (q.type === 'READING_COMPREHENSION') {
+                        // For comprehension, points are on sub-questions
+                        questionToSave.points = q.subQuestions.reduce((subSum, subQ) => subSum + (parseInt(subQ.points, 10) || 0), 0);
+                    }
                     switch (q.type) {
                         case 'MCQ': questionToSave.options = q.options; questionToSave.correctOption = q.correctOption; break;
                         case 'FILL_IN_THE_BLANK': questionToSave.answers = q.answers.filter(Boolean); questionToSave.caseSensitive = q.caseSensitive; break;
                         case 'PARAGRAPH': questionToSave.gradingKeywords = q.gradingKeywords.filter(Boolean); break;
+                        // --- NEW: Data to save for new question types ---
+                        case 'MATCH_THE_FOLLOWING':
+                            const validPairs = q.pairs.filter(p => p.prompt.trim() && p.option.trim());
+                            questionToSave.prompts = validPairs.map(p => p.prompt);
+                            questionToSave.options = validPairs.map(p => p.option);
+                            questionToSave.correctMatches = Object.fromEntries(validPairs.map(p => [p.prompt, p.option]));
+                            break;
+                        case 'CATEGORIZE':
+                            questionToSave.categories = q.categories.filter(Boolean);
+                            questionToSave.items = q.items.filter(item => item.text.trim() && item.category.trim());
+                            break;
+                        case 'REORDER':
+                            questionToSave.items = q.items.filter(item => item.trim());
+                            break;
+                        case 'READING_COMPREHENSION':
+                            questionToSave.passage = q.passage;
+                            questionToSave.subQuestions = q.subQuestions.map(sq => ({
+                                ...sq,
+                                points: parseInt(sq.points, 10) || 0
+                            }));
+                            break;
                         default: break;
                     }
                     return questionToSave;
@@ -192,21 +314,27 @@ const CreateQuiz = () => {
                                                     <option value="MCQ">Multiple Choice</option>
                                                     <option value="FILL_IN_THE_BLANK">Fill in the Blank</option>
                                                     <option value="PARAGRAPH">Paragraph</option>
+                                                    <option value="MATCH_THE_FOLLOWING">Match the Following</option>
+                                                    <option value="CATEGORIZE">Categorize</option>
+                                                    <option value="REORDER">Reorder</option>
+                                                    <option value="READING_COMPREHENSION">Reading Comprehension</option>
                                                 </select>
                                             )}
                                             <button onClick={() => handleRemoveQuestion(qIndex)} className="remove-question-btn" type="button" disabled={questions.length === 1}><FaTrashAlt /></button>
                                         </div>
                                     </div>
                                     <div className="form-group">
-                                        <label htmlFor={`question-text-${qIndex}`}>Question Text</label>
-                                        <input id={`question-text-${qIndex}`} type="text" value={q.text} onChange={(e) => handleQuestionFieldChange(qIndex, 'text', e.target.value)} placeholder="e.g., The powerhouse of the cell is the ___." className="form-control" />
+                                        <label htmlFor={`question-text-${qIndex}`}>Question Text / Instruction</label>
+                                        <input id={`question-text-${qIndex}`} type="text" value={q.text} onChange={(e) => handleQuestionFieldChange(qIndex, 'text', e.target.value)} placeholder="e.g., Match the capitals to their countries." className="form-control" />
                                         {q.type === 'FILL_IN_THE_BLANK' && <small className="input-instruction">Use underscores <code>___</code> to show students where the blank is.</small>}
                                     </div>
                                     <div className="question-body">
                                         <div className="form-group points-group">
                                             <label htmlFor={`question-points-${qIndex}`}>Points</label>
-                                            <input id={`question-points-${qIndex}`} type="number" value={q.points} onChange={(e) => handleQuestionFieldChange(qIndex, 'points', e.target.value)} onBlur={(e) => handleQuestionFieldChange(qIndex, 'points', Math.max(1, parseInt(e.target.value, 10) || 1))} className="form-control points-input" />
+                                            <input id={`question-points-${qIndex}`} type="number" value={q.points} onChange={(e) => handleQuestionFieldChange(qIndex, 'points', e.target.value)} onBlur={(e) => handleQuestionFieldChange(qIndex, 'points', Math.max(1, parseInt(e.target.value, 10) || 1))} className="form-control points-input" disabled={q.type === 'READING_COMPREHENSION'}/>
+                                            {q.type === 'READING_COMPREHENSION' && <small className="input-instruction">Total points are auto-calculated from sub-questions.</small>}
                                         </div>
+
                                         {q.type === 'MCQ' && (
                                             <div className="options-container slide-down">
                                                 <h4>Options (Mark the correct one)</h4>
@@ -239,6 +367,89 @@ const CreateQuiz = () => {
                                                 </div>
                                             </div>
                                         )}
+                                        
+                                        {/* --- NEW: JSX for New Question Types --- */}
+
+                                        {q.type === 'MATCH_THE_FOLLOWING' && (
+                                            <div className="match-following-container slide-down">
+                                                <h4>Pairs (Prompt on left, Correct Match on right)</h4>
+                                                {q.pairs.map((pair, pairIndex) => (
+                                                    <div key={pairIndex} className="match-pair-item">
+                                                        <input type="text" value={pair.prompt} onChange={e => handleMatchPairChange(qIndex, pairIndex, 'prompt', e.target.value)} placeholder={`Prompt ${pairIndex + 1}`} className="form-control" />
+                                                        <FaGripLines />
+                                                        <input type="text" value={pair.option} onChange={e => handleMatchPairChange(qIndex, pairIndex, 'option', e.target.value)} placeholder={`Matching Option ${pairIndex + 1}`} className="form-control" />
+                                                        <button onClick={() => handleRemoveMatchPair(qIndex, pairIndex)} className="remove-item-btn" type="button" disabled={q.pairs.length <= 1}><FaTrashAlt /></button>
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => handleAddMatchPair(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Pair</button>
+                                            </div>
+                                        )}
+
+                                        {q.type === 'CATEGORIZE' && (
+                                            <div className="categorize-container slide-down">
+                                                <div className="form-group">
+                                                    <label>Categories (comma-separated)</label>
+                                                    <input type="text" value={q.categories.join(',')} onChange={e => handleQuestionFieldChange(qIndex, 'categories', e.target.value.split(',').map(c => c.trim()))} placeholder="e.g., Fruit, Vegetable, Grain" className="form-control" />
+                                                </div>
+                                                <h4>Items to Categorize</h4>
+                                                {q.items.map((item, itemIndex) => (
+                                                    <div key={itemIndex} className="categorize-item-row">
+                                                        <input type="text" value={item.text} onChange={e => handleCategorizeItemChange(qIndex, itemIndex, 'text', e.target.value)} placeholder={`Item ${itemIndex + 1}`} className="form-control" />
+                                                        <select value={item.category} onChange={e => handleCategorizeItemChange(qIndex, itemIndex, 'category', e.target.value)} className="form-control category-select" disabled={q.categories.length === 0}>
+                                                            <option value="">Select Category</option>
+                                                            {q.categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                                        </select>
+                                                        <button onClick={() => handleRemoveCategorizeItem(qIndex, itemIndex)} className="remove-item-btn" type="button" disabled={q.items.length <= 1}><FaTrashAlt /></button>
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => handleAddCategorizeItem(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Item</button>
+                                            </div>
+                                        )}
+
+                                        {q.type === 'REORDER' && (
+                                            <div className="reorder-container slide-down">
+                                                <h4>Items (Enter in the correct order)</h4>
+                                                {q.items.map((item, itemIndex) => (
+                                                    <div key={itemIndex} className="reorder-item-row">
+                                                         <span className="reorder-number">{itemIndex + 1}.</span>
+                                                         <input type="text" value={item} onChange={e => handleReorderItemChange(qIndex, itemIndex, e.target.value)} placeholder={`Item in position ${itemIndex + 1}`} className="form-control" />
+                                                         <button onClick={() => handleRemoveReorderItem(qIndex, itemIndex)} className="remove-item-btn" type="button" disabled={q.items.length <= 2}><FaTrashAlt /></button>
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => handleAddReorderItem(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Item</button>
+                                            </div>
+                                        )}
+
+                                        {q.type === 'READING_COMPREHENSION' && (
+                                            <div className="comprehension-container slide-down">
+                                                <div className="form-group">
+                                                    <label>Passage</label>
+                                                    <textarea value={q.passage} onChange={e => handleQuestionFieldChange(qIndex, 'passage', e.target.value)} rows="8" placeholder="Enter the reading passage here..." className="form-control passage-textarea"></textarea>
+                                                </div>
+                                                <h4>Follow-up Questions</h4>
+                                                {q.subQuestions.map((sq, sqIndex) => (
+                                                    <div key={sqIndex} className="sub-question-card">
+                                                        <div className="sub-question-header">
+                                                          <h5>Question {sqIndex + 1} (MCQ)</h5>
+                                                          <button onClick={() => handleRemoveSubQuestion(qIndex, sqIndex)} className="remove-item-btn" type="button"><FaTrashAlt/></button>
+                                                        </div>
+                                                        <input type="text" value={sq.text} onChange={e => handleSubQuestionChange(qIndex, sqIndex, 'text', e.target.value)} placeholder="Sub-question text" className="form-control"/>
+                                                        {sq.options.map((opt, optIndex) => (
+                                                            <div key={optIndex} className="sub-question-option">
+                                                                <input type="radio" name={`sub-q-${qIndex}-${sqIndex}`} checked={sq.correctOption === optIndex} onChange={() => handleSubQuestionChange(qIndex, sqIndex, 'correctOption', optIndex)} />
+                                                                <input type="text" value={opt} onChange={e => handleSubQuestionOptionChange(qIndex, sqIndex, optIndex, e.target.value)} placeholder={`Option ${optIndex + 1}`} className="form-control"/>
+                                                            </div>
+                                                        ))}
+                                                        <div className="form-group points-group sub-points">
+                                                            <label>Points</label>
+                                                            <input type="number" value={sq.points} onChange={e => handleSubQuestionChange(qIndex, sqIndex, 'points', e.target.value)} className="form-control points-input"/>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => handleAddSubQuestion(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Sub-Question</button>
+                                            </div>
+                                        )}
+
                                     </div>
                                 </div>
                             ))}

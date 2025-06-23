@@ -62,6 +62,10 @@ const TeacherHome = () => {
   const fetchDashboardData = async () => {
     setLoading(true); 
     try {
+      if (!currentUser) { // Guard against null currentUser
+          setLoading(false);
+          return;
+      }
       const quizzesQuery = query(
         collection(db, "quizzes"),
         where("createdBy", "==", currentUser.uid)
@@ -214,10 +218,14 @@ const TeacherHome = () => {
               <button className="close-modal-btn" onClick={() => setIsQuizTypeModalOpen(false)}><i className="fas fa-times"></i></button>
             </div>
             <div className="quiz-type-grid">
-              <div className="quiz-type-card" onClick={() => handleSelectQuizType('MCQ')}><i className="fas fa-check-double card-type-icon"></i><h3>MCQ Quiz</h3><p>All questions will be Multiple Choice. Ideal for quick knowledge checks.</p></div>
-              <div className="quiz-type-card" onClick={() => handleSelectQuizType('FILL_IN_THE_BLANK')}><i className="fas fa-minus card-type-icon"></i><h3>Fill in the Blanks</h3><p>All questions require students to type in a short, specific answer.</p></div>
-              <div className="quiz-type-card" onClick={() => handleSelectQuizType('PARAGRAPH')}><i className="fas fa-paragraph card-type-icon"></i><h3>Paragraph Quiz</h3><p>All questions are long-form and require manual grading.</p></div>
-              <div className="quiz-type-card" onClick={() => handleSelectQuizType('MIXED')}><i className="fas fa-cubes card-type-icon"></i><h3>Mixed Quiz</h3><p>Combine all question types for a comprehensive assessment.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('MCQ')}><i className="fas fa-check-double card-type-icon"></i><h3>MCQ Quiz</h3><p>Classic multiple choice questions.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('FILL_IN_THE_BLANK')}><i className="fas fa-minus card-type-icon"></i><h3>Fill in the Blanks</h3><p>Short, specific, auto-graded answers.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('PARAGRAPH')}><i className="fas fa-paragraph card-type-icon"></i><h3>Paragraph Quiz</h3><p>Long-form answers needing manual grading.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('MATCH_THE_FOLLOWING')}><i className="fas fa-exchange-alt card-type-icon"></i><h3>Match the Following</h3><p>Match prompts to the correct options.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('CATEGORIZE')}><i className="fas fa-sitemap card-type-icon"></i><h3>Categorize Items</h3><p>Sort items into the correct groups.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('REORDER')}><i className="fas fa-sort-amount-down card-type-icon"></i><h3>Reorder Sequence</h3><p>Arrange items in the correct order.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('READING_COMPREHENSION')}><i className="fas fa-book-reader card-type-icon"></i><h3>Reading Comprehension</h3><p>A passage with follow-up questions.</p></div>
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('MIXED')}><i className="fas fa-cubes card-type-icon"></i><h3>Custom/Mixed Quiz</h3><p>Combine all question types for a complex assessment.</p></div>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
     display: flex;
     justify-content: center;
     min-height: 100vh;
+    width: 100vw;
     padding: 5rem 2rem;
     background: linear-gradient(135deg, #f12711, #f5af19);
     color: #fff;
