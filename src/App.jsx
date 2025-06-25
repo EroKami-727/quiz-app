@@ -8,6 +8,7 @@ import TakeQuiz from './pages/Student/TakeQuiz';
 import CreateQuiz from './pages/Teacher/CreateQuiz';
 import TeacherHome from './pages/Teacher/TeacherHome';
 import YourQuizzes from './pages/Teacher/YourQuizzes';
+import MediaTest from './pages/Teacher/MediaTest';
 import StudentDashboard from './pages/Student/StudentDashboard.jsx';
 import YourResults from './pages/Student/YourResults';
 import Grading from './pages/Teacher/Grading'; 
@@ -44,6 +45,7 @@ function App() {
         <Route path="/teacher/home" element={<ProtectedRoute><TeacherHome /></ProtectedRoute>} />
         <Route path="/teacher/create-quiz" element={<ProtectedRoute><CreateQuiz /></ProtectedRoute>} />
         <Route path="/teacher/your-quizzes" element={<ProtectedRoute><YourQuizzes /></ProtectedRoute>} />
+        <Route path="/teacher/media-test" element={<ProtectedRoute><MediaTest /></ProtectedRoute>} />
         {/* --- NEW GRADING ROUTE --- */}
         <Route path="/teacher/grading/:quizId" element={<ProtectedRoute><Grading /></ProtectedRoute>} />
         
