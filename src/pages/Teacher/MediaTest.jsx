@@ -1,6 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ImageKit from 'imagekit-javascript';
+
+// BEST PRACTICE: Initialize the SDK once outside the component.
+// It's stateless and only needs your public keys for this setup.
+const imagekit = new ImageKit({
+  publicKey: import.meta.env.VITE_PUBLIC_KEY,
+  urlEndpoint: import.meta.env.VITE_URL_ENDPOINT,
+});
+
 
 const MediaTest = () => {
   const navigate = useNavigate();
@@ -10,54 +18,9 @@ const MediaTest = () => {
   const [error, setError] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Function to get the appropriate API URL based on the environment
+  // Helper to determine the backend API URL.
   const getApiUrl = () => {
-    // Check if we have a custom API URL in environment variables (for teammates using external URL)
-    const customApiUrl = import.meta.env.VITE_API_URL;
-    
-    if (customApiUrl) {
-      // Use the custom API URL (production/preview URL)
-      return `${customApiUrl}/api/auth`;
-    }
-    
-    // Default to relative path (works with vercel dev and production)
-    return '/api/auth';
-  };
-
-  // Function to fetch authentication parameters from our secure backend
-  const getAuthParams = async () => {
-    try {
-      const apiUrl = getApiUrl();
-      console.log('Fetching auth params from:', apiUrl);
-      
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.message || 'Failed to get authentication parameters');
-      }
-
-      return {
-        signature: data.signature,
-        expire: data.expire,
-        token: data.token,
-        publicKey: data.publicKey,
-        urlEndpoint: data.urlEndpoint
-      };
-    } catch (error) {
-      console.error('Error fetching auth params:', error);
-      throw new Error(`Authentication failed: ${error.message}`);
-    }
+    return import.meta.env.VITE_API_URL || ''; // Use VITE_API_URL if set, otherwise fallback to relative path.
   };
 
   const handleFileSelect = (event) => {
@@ -66,6 +29,8 @@ const MediaTest = () => {
       setSelectedFile(file);
       setError('');
       setUploadedFile(null);
+      // Ensure the file input can select the same file again if needed
+      event.target.value = null; 
     }
   };
 
@@ -80,29 +45,35 @@ const MediaTest = () => {
     setUploadProgress(0);
 
     try {
-      // Get authentication parameters from our secure backend
-      const authParams = await getAuthParams();
-      
-      // Initialize ImageKit with the authentication parameters (no private key!)
-      const imagekit = new ImageKit({
-        publicKey: authParams.publicKey,
-        urlEndpoint: authParams.urlEndpoint,
-        authenticationEndpoint: getApiUrl(), // Use our secure endpoint
-      });
+      // Step 1: Fetch temporary authentication parameters from our secure backend.
+      const authApiUrl = `${getApiUrl()}/api/auth`;
+      console.log('Fetching auth params from:', authApiUrl);
+      const response = await fetch(authApiUrl);
 
+      if (!response.ok) {
+        // Try to get more detailed error from the server's JSON response
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Authentication server failed with status: ${response.status}`);
+      }
+      
+      const authParams = await response.json();
+      
+      if (!authParams.signature || !authParams.expire || !authParams.token) {
+        throw new Error('Invalid authentication parameters received from the server.');
+      }
+
+      // Step 2: Use the fetched parameters to perform the upload.
       const fileName = `test_${Date.now()}_${selectedFile.name}`;
       
-      // Upload the file using ImageKit
       const result = await imagekit.upload({
         file: selectedFile,
         fileName: fileName,
         folder: '/quiz-app-media-test',
-        // Use the authentication parameters we got from the backend
+        // THE FIX: Provide the signature, token, and expire time directly.
+        // DO NOT provide `authenticationEndpoint` here or during initialization.
         signature: authParams.signature,
         expire: authParams.expire,
         token: authParams.token,
-      }, {
-        // Progress callback
         onUploadProgress: (progress) => {
           const percentComplete = Math.round((progress.loaded / progress.total) * 100);
           setUploadProgress(percentComplete);
@@ -110,106 +81,62 @@ const MediaTest = () => {
       });
       
       setUploadedFile(result);
-      setUploadProgress(100);
       console.log('Upload successful:', result);
       
-    } catch (error) {
-      console.error('Upload error:', error);
-      setError(`Upload failed: ${error.message}`);
+    } catch (err) {
+      // This will now log the detailed error message to the console.
+      console.error('Upload error object:', err);
+      setError(`Upload failed: ${err.message}`);
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!uploadedFile) return;
-
-    try {
-      // Get fresh authentication parameters for the delete operation
-      const authParams = await getAuthParams();
-      
-      // Initialize ImageKit for the delete operation
-      const imagekit = new ImageKit({
-        publicKey: authParams.publicKey,
-        urlEndpoint: authParams.urlEndpoint,
-        authenticationEndpoint: getApiUrl(),
-      });
-
-      await imagekit.deleteFile(uploadedFile.fileId);
-      setUploadedFile(null);
-      setSelectedFile(null);
-      // Reset the file input field
-      document.querySelector('input[type="file"]').value = '';
-      console.log('File deleted successfully');
-    } catch (error) {
-      console.error('Delete error:', error);
-      setError(`Delete failed: ${error.message}`);
-    }
+    // SECURITY: Client-side deletion is a privileged operation and is not secure.
+    // A proper implementation requires a dedicated backend endpoint (e.g., POST /api/delete-file)
+    // that validates the user's permission before using the private key to delete the file.
+    alert("Client-side deletion is disabled for security. This requires a dedicated backend endpoint.");
+    console.warn("Deletion was not performed. A secure backend endpoint is required.");
   };
+
+  // --- Utility and Rendering Functions (No changes needed below) ---
 
   const getFileType = (file) => {
     if (!file) return 'unknown';
-
-    // Check for ImageKit's explicit fileType property
-    if (file.fileType === 'image' || file.fileType === 'video' || file.fileType === 'audio') {
-        return file.fileType;
-    }
-
-    // Fallback: Check the file's name or URL for an extension
+    if (file.fileType === 'image' || file.fileType === 'video' || file.fileType === 'audio') return file.fileType;
     const source = file.name || file.url || '';
-    if (/\.(jpe?g|png|gif|webp|svg)$/i.test(source)) {
-        return 'image';
-    }
-    if (/\.(mp4|webm|mov|ogg)$/i.test(source)) {
-        return 'video';
-    }
-    if (/\.(mp3|wav|aac|flac)$/i.test(source)) {
-        return 'audio';
-    }
-
-    // Check the MIME type
+    if (/\.(jpe?g|png|gif|webp|svg)$/i.test(source)) return 'image';
+    if (/\.(mp4|webm|mov|ogg)$/i.test(source)) return 'video';
+    if (/\.(mp3|wav|aac|flac)$/i.test(source)) return 'audio';
     const mimeType = file.type || '';
     if (mimeType.startsWith('image/')) return 'image';
     if (mimeType.startsWith('video/')) return 'video';
     if (mimeType.startsWith('audio/')) return 'audio';
-
     return 'unknown';
   };
 
   const renderPreview = (file) => {
     const fileType = getFileType(file);
     const url = file.url || URL.createObjectURL(file);
+    useEffect(() => {
+        // Clean up the object URL when the component unmounts or file changes
+        return () => {
+            if (file && !file.url) {
+                URL.revokeObjectURL(url);
+            }
+        };
+    }, [file, url]);
 
     switch (fileType) {
-      case 'image':
-        return (
-          <img 
-            src={url} 
-            alt="Content preview" 
-            style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
-            onLoad={() => { if (!file.url) URL.revokeObjectURL(url) }}
-          />
-        );
-      case 'video':
-        return (
-          <video 
-            controls 
-            style={{ maxWidth: '100%', maxHeight: '300px' }}
-            onCanPlay={() => { if (!file.url) URL.revokeObjectURL(url) }}
-          >
-            <source src={url} type={file.type || file.fileType} />
-            Your browser does not support video playback.
-          </video>
-        );
-      case 'audio':
-        return (
-          <audio controls style={{ width: '100%' }} onCanPlay={() => { if (!file.url) URL.revokeObjectURL(url) }}>
-            <source src={url} type={file.type || file.fileType} />
-            Your browser does not support audio playback.
-          </audio>
-        );
-      default:
-        return <p style={{color: '#888'}}>File type not supported for preview</p>;
+        case 'image':
+            return <img src={url} alt="Content preview" style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} />;
+        case 'video':
+            return <video controls style={{ maxWidth: '100%', maxHeight: '300px' }}><source src={url} type={file.type || file.fileType} />Your browser does not support video playback.</video>;
+        case 'audio':
+            return <audio controls style={{ width: '100%' }}><source src={url} type={file.type || file.fileType} />Your browser does not support audio playback.</audio>;
+        default:
+            return <p style={{ color: '#888' }}>File type not supported for preview</p>;
     }
   };
 
@@ -228,16 +155,8 @@ const MediaTest = () => {
         </button>
       </div>
 
-      {/* API URL Info */}
       <div style={{ backgroundColor: '#e7f3ff', color: '#0c5460', padding: '12px', borderRadius: '4px', marginBottom: '20px', border: '1px solid #bee5eb', fontSize: '14px' }}>
-        <strong>🔗 API Endpoint:</strong> {getApiUrl()}
-        <br />
-        <small>
-          {import.meta.env.VITE_API_URL ? 
-            '(Using custom API URL from VITE_API_URL)' : 
-            '(Using relative path - works with vercel dev and production)'
-          }
-        </small>
+        <strong>🔗 API Endpoint Base:</strong> {getApiUrl() || '(Relative)'}
       </div>
 
       <div style={{ border: '2px dashed #ddd', borderRadius: '8px', padding: '20px', textAlign: 'center', marginBottom: '20px', backgroundColor: '#fafafa' }}>
@@ -296,20 +215,6 @@ const MediaTest = () => {
           </div>
         </div>
       )}
-
-      <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', color: '#343a40', border: '1px solid #dee2e6', borderRadius: '4px', fontSize: '14px', lineHeight: '1.5' }}>
-        <h4 style={{ marginTop: 0 }}>🔐 Secure Upload Test Instructions:</h4>
-        <ol style={{ paddingLeft: '20px' }}>
-          <li>Select an image, video, or audio file. You will see a local preview.</li>
-          <li>Click "🔐 Secure Upload to ImageKit" to start the secure upload process.</li>
-          <li>The app will fetch authentication parameters from the secure backend API.</li>
-          <li>After a successful upload, you will see the file details and a preview from ImageKit.</li>
-          <li>Optionally, click "Delete File" to remove it from your ImageKit account.</li>
-        </ol>
-        <p style={{ marginBottom: 0, fontWeight: 'bold', color: '#28a745' }}>
-          ✅ No private keys are exposed to the client-side!
-        </p>
-      </div>
     </div>
   );
 };
