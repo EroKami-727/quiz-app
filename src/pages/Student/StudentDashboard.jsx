@@ -1,18 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { signOut } from 'firebase/auth';
-import { db, auth } from '../../firebase';
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy
-} from 'firebase/firestore';
+import { getAuth, signOut } from 'firebase/auth';
+import { db } from '../../firebase';
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import '../../styles/Student/StudentDashboard.css';
-import { PlayCircle, Award, BarChart3 } from 'lucide-react';
+import {
+  PlayCircle, ChevronRight, Award, User, LogOut
+} from 'lucide-react';
 
 const StudentDashboard = () => {
+  const auth = getAuth();
   const user = auth.currentUser;
   const navigate = useNavigate();
 
@@ -32,30 +28,23 @@ const StudentDashboard = () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Fetch active quizzes
       const quizQuery = query(collection(db, 'quizzes'), where('active', '==', true));
       const quizSnapshot = await getDocs(quizQuery);
       const availableQuizzes = quizSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Fetch quiz results for this user
-      const resultQuery = query(
-        collection(db, 'quiz_results'),
-        where('userId', '==', user.uid),
-        orderBy('completedAt', 'desc')
-      );
+      const resultQuery = query(collection(db, 'quiz_results'), where('uid', '==', user.uid), orderBy('completedAt', 'desc'));
       const resultSnapshot = await getDocs(resultQuery);
       const recentQuizzes = resultSnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
-          quizTitle: data.quizTitle || 'Untitled Quiz',
-          score: data.score || 0,
+          quizTitle: data.quizTitle,
+          score: data.score,
           timeSpent: data.timeSpent || 0,
           completedAt: data.completedAt?.toDate() || new Date()
         };
       });
 
-      // Stats calculations
       const scores = recentQuizzes.map(r => r.score);
       const totalQuizzes = scores.length;
       const averageScore = totalQuizzes ? Math.round(scores.reduce((a, b) => a + b, 0) / totalQuizzes) : 0;
@@ -96,157 +85,122 @@ const StudentDashboard = () => {
 
   if (loading) {
     return (
-      <div className="student-loading-screen">Loading Dashboard...</div>
+      <div className="loading-screen">Loading Dashboard...</div>
     );
   }
 
   return (
-    <div className="student-dashboard-container">
-      <button onClick={handleSignOut} className="student-sign-out-top-btn">Sign Out</button>
-      
-      {/* Header */}
-      <div className="student-dashboard-header student-fade-in">
-        <div className="student-header-left">
-          <h1>📊 Student Dashboard</h1>
-          <p className="student-welcome-text">Welcome, {user?.displayName || user?.email}</p>
-        </div>
-      </div>
+    <div className="attend-quiz-full-container">
+      <button onClick={handleSignOut} className="sign-out-top-btn">Sign Out</button>
+      <div className="attend-quiz-content" style={{ width: '80vw' }}>
+        <h1>📊 Student Dashboard</h1>
+        <p className="welcome-text">Welcome, {user?.displayName || user?.email}</p>
 
-      {/* Main Dashboard Content */}
-      <div className="student-dashboard-content">
-        <div className="student-dashboard-grid">
-          
-          {/* Primary Actions */}
-          <div className="student-dashboard-section student-primary-actions student-slide-up">
-            <h2>Quick Actions</h2>
-            <div className="student-action-cards">
-              <div className="student-action-card student-primary student-subtle-hover" onClick={() => navigate('/student/attend-quiz')}>
-                <div className="student-card-icon">
-                  <PlayCircle size={32} />
-                </div>
-                <h3>Attend Quiz</h3>
-                <p>Join available quizzes and test your knowledge</p>
+        {/* 🔗 Attend Quiz Button */}
+        <div style={{ alignSelf: 'flex-end', marginBottom: '1rem' }}>
+          <button
+            className="attend-icon-btn"
+            onClick={() => navigate('/student/attend-quiz')}
+          >
+            <PlayCircle size={18} />
+            Attend Quiz
+          </button>
+        </div>
+
+        {/* 📈 Progress Summary Card */}
+        {dashboardData.stats.totalQuizzes > 0 && (
+          <div className="mt-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl shadow-lg text-white p-8">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="p-3 bg-white bg-opacity-20 rounded-full">
+                <Award className="h-8 w-8" />
               </div>
-              
-              <div className="student-action-card student-secondary student-subtle-hover student-delay-1" onClick={() => navigate('/student/results')}>
-                <div className="student-card-icon">
-                  <BarChart3 size={32} />
-                </div>
-                <h3>Your Results</h3>
-                <p>View detailed performance and quiz history</p>
+              <div>
+                <h3 className="text-xl font-bold">Great Progress!</h3>
+                <p className="text-indigo-100">
+                  You've completed <strong>{dashboardData.stats.totalQuizzes}</strong> quiz{dashboardData.stats.totalQuizzes !== 1 ? 'zes' : ''}.
+                  {dashboardData.stats.averageScore >= 70 && ' Keep it up!'}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div>
+              <label className="block mb-1 font-semibold">Average Score</label>
+              <div className="w-full bg-white bg-opacity-20 rounded-full h-4 overflow-hidden">
+                <div
+                  className="h-full bg-white bg-opacity-90 rounded-full transition-all"
+                  style={{ width: `${dashboardData.stats.averageScore}%` }}
+                ></div>
+              </div>
+              <p className="text-right text-sm text-indigo-100 mt-1">
+                {dashboardData.stats.averageScore}% average score
+              </p>
+            </div>
+
+            {/* Other Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 text-sm text-indigo-100">
+              <div className="flex flex-col items-center">
+                <span className="text-lg font-bold">{dashboardData.stats.bestScore}%</span>
+                <span>Best Score</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-lg font-bold">{dashboardData.stats.totalQuizzes}</span>
+                <span>Total Quizzes</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-lg font-bold">{formatTime(dashboardData.stats.totalTimeSpent)}</span>
+                <span>Time Spent</span>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Progress Summary Card */}
-          {dashboardData.stats.totalQuizzes > 0 && (
-            <div className="student-dashboard-section student-progress-section student-slide-up student-delay-2">
-              <div className="student-progress-card">
-                <div className="student-progress-header">
-                  <div className="student-progress-icon">
-                    <Award size={32} />
+        {/* 📋 Available Quizzes */}
+        <div className="available-quizzes-card">
+          <h2>Available Quizzes</h2>
+          {dashboardData.availableQuizzes.length > 0 ? (
+            <div className="quiz-list">
+              {dashboardData.availableQuizzes.map(quiz => (
+                <div key={quiz.id} className="quiz-list-item">
+                  <div className="quiz-info">
+                    <h3>{quiz.title}</h3>
+                    <p className="quiz-details">
+                      {quiz.questions?.length || 0} questions • {formatTime(quiz.timeLimit || 0)}
+                    </p>
                   </div>
-                  <div className="student-progress-info">
-                    <h3>Great Progress!</h3>
-                    <p>
-                      You've completed <strong>{dashboardData.stats.totalQuizzes}</strong> quiz{dashboardData.stats.totalQuizzes !== 1 ? 'zes' : ''}.
-                      {dashboardData.stats.averageScore >= 70 && ' Keep it up!'}
+                  <button
+                    onClick={() => navigate(`/student/quiz/${quiz.id}`)}
+                    className="join-quiz-btn"
+                  >
+                    Take Quiz
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No quizzes available.</p>
+          )}
+        </div>
+
+        {/* 🏆 Recent Results */}
+        <div className="available-quizzes-card">
+          <h2>Recent Results</h2>
+          {dashboardData.recentQuizzes.length > 0 ? (
+            <div className="quiz-list">
+              {dashboardData.recentQuizzes.slice(0, 5).map(result => (
+                <div key={result.id} className="quiz-list-item">
+                  <div className="quiz-info">
+                    <h3>{result.quizTitle}</h3>
+                    <p className="quiz-details">
+                      Score: {result.score}% • {result.completedAt.toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-
-                {/* Progress Bar */}
-                <div className="student-progress-bar-section">
-                  <label className="student-progress-label">Average Score</label>
-                  <div className="student-progress-bar-container">
-                    <div
-                      className="student-progress-bar-fill"
-                      style={{ width: `${dashboardData.stats.averageScore}%` }}
-                    ></div>
-                  </div>
-                  <p className="student-progress-percentage">
-                    {dashboardData.stats.averageScore}% average score
-                  </p>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="student-stats-grid">
-                  <div className="student-stat-item">
-                    <span className="student-stat-number">{dashboardData.stats.bestScore}%</span>
-                    <span className="student-stat-label">Best Score</span>
-                  </div>
-                  <div className="student-stat-item">
-                    <span className="student-stat-number">{dashboardData.stats.totalQuizzes}</span>
-                    <span className="student-stat-label">Total Quizzes</span>
-                  </div>
-                  <div className="student-stat-item">
-                    <span className="student-stat-number">{formatTime(dashboardData.stats.totalTimeSpent)}</span>
-                    <span className="student-stat-label">Time Spent</span>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
+          ) : (
+            <p>No quiz results yet. Take a quiz to get started!</p>
           )}
-
-          {/* Available Quizzes */}
-          <div className="student-dashboard-section student-slide-up student-delay-3">
-            <h2>Available Quizzes</h2>
-            <div className="student-available-quizzes-card">
-              {dashboardData.availableQuizzes.length > 0 ? (
-                <div className="student-quiz-list">
-                  {dashboardData.availableQuizzes.map(quiz => (
-                    <div key={quiz.id} className="student-quiz-list-item student-fade-in-item">
-                      <div className="student-quiz-info">
-                        <h3>{quiz.title}</h3>
-                        <p className="student-quiz-details">
-                          {quiz.questions?.length || 0} questions • {formatTime(quiz.timeLimit || 0)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => navigate(`/student/quiz/${quiz.id}`)}
-                        className="student-join-quiz-btn"
-                      >
-                        Take Quiz
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="student-empty-state">
-                  <p>No quizzes available at the moment.</p>
-                  <p className="student-empty-subtext">Check back later for new quizzes!</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Results */}
-          <div className="student-dashboard-section student-slide-up student-delay-4">
-            <h2>Recent Results</h2>
-            <div className="student-recent-results-card">
-              {dashboardData.recentQuizzes.length > 0 ? (
-                <div className="student-quiz-list">
-                  {dashboardData.recentQuizzes.slice(0, 5).map((result, index) => (
-                    <div key={result.id} className="student-quiz-list-item student-fade-in-item" style={{animationDelay: `${0.1 * index}s`}}>
-                      <div className="student-quiz-info">
-                        <h3>{result.quizTitle}</h3>
-                        <p className="student-quiz-details">
-                          Score: <span className={`student-score ${result.score >= 70 ? 'student-good-score' : result.score >= 50 ? 'student-okay-score' : 'student-poor-score'}`}>
-                            {result.score}%
-                          </span> • {result.completedAt.toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="student-empty-state">
-                  <p>No quiz results yet.</p>
-                  <p className="student-empty-subtext">Take your first quiz to see results here!</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

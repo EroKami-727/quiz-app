@@ -119,6 +119,7 @@ const TeacherHome = () => {
   const handleSignOut = () => signOut(auth).then(() => navigate('/teacher/login')).catch(console.error);
   const handleYourQuizzes = () => navigate('/teacher/your-quizzes');
   const handleCreateQuizClick = () => setIsQuizTypeModalOpen(true);
+  const handleMediaTest = () => navigate('/teacher/media-test');
   const handleSelectQuizType = (type) => {
     setIsQuizTypeModalOpen(false);
     navigate('/teacher/create-quiz', { state: { quizType: type } });
@@ -166,6 +167,11 @@ const TeacherHome = () => {
                 <div className="card-icon"><i className="fas fa-list-alt"></i></div>
                 <h3>Your Quizzes</h3>
                 <p>Manage, grade, and review your quizzes.</p>
+              </div>
+              <div className="action-card tertiary bounce-in delay-2" onClick={handleMediaTest}>
+                <div className="card-icon"><i className="fas fa-cloud-upload-alt"></i></div>
+                <h3>Test Media Upload</h3>
+                <p>Test ImageKit integration with file uploads.</p>
               </div>
             </div>
           </div>
