@@ -2,14 +2,68 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ImageKit from 'imagekit-javascript';
 
-// BEST PRACTICE: Initialize the SDK once outside the component.
-// It's stateless and only needs your public keys for this setup.
+// Initialize the ImageKit SDK once with your public keys.
 const imagekit = new ImageKit({
   publicKey: import.meta.env.VITE_PUBLIC_KEY,
   urlEndpoint: import.meta.env.VITE_URL_ENDPOINT,
 });
 
+// =================================================================
+// SOLUTION: A dedicated component for rendering the media preview.
+// This component can safely use the useEffect Hook for cleanup.
+// =================================================================
+const MediaPreview = ({ file }) => {
+  const [fileType, setFileType] = useState('unknown');
+  const [previewUrl, setPreviewUrl] = useState('');
 
+  useEffect(() => {
+    // This effect runs whenever the `file` prop changes.
+    if (!file) {
+      setPreviewUrl('');
+      return;
+    }
+
+    // Determine the file type
+    const source = file.name || file.url || '';
+    if (/\.(jpe?g|png|gif|webp|svg)$/i.test(source)) setFileType('image');
+    else if (/\.(mp4|webm|mov|ogg)$/i.test(source)) setFileType('video');
+    else if (/\.(mp3|wav|aac|flac)$/i.test(source)) setFileType('audio');
+    else if (file.type?.startsWith('image/')) setFileType('image');
+    else if (file.type?.startsWith('video/')) setFileType('video');
+    else if (file.type?.startsWith('audio/')) setFileType('audio');
+    else setFileType('unknown');
+
+    // Generate a temporary URL for local files; use existing URL for uploaded files.
+    const url = file.url || URL.createObjectURL(file);
+    setPreviewUrl(url);
+
+    // This is the cleanup function. It runs when the component unmounts or the file changes.
+    return () => {
+      // If the URL was a temporary local one, revoke it to prevent memory leaks.
+      if (file && !file.url) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [file]); // Dependency array ensures this effect re-runs only when the file changes.
+
+  if (!file || !previewUrl) return null;
+
+  switch (fileType) {
+    case 'image':
+      return <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} />;
+    case 'video':
+      return <video controls src={previewUrl} style={{ maxWidth: '100%', maxHeight: '300px' }} />;
+    case 'audio':
+      return <audio controls src={previewUrl} style={{ width: '100%' }} />;
+    default:
+      return <p style={{ color: '#888' }}>File type not supported for preview</p>;
+  }
+};
+
+
+// =================================================================
+// Main MediaTest Component
+// =================================================================
 const MediaTest = () => {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState(null);
@@ -20,7 +74,7 @@ const MediaTest = () => {
 
   // Helper to determine the backend API URL.
   const getApiUrl = () => {
-    return import.meta.env.VITE_API_URL || ''; // Use VITE_API_URL if set, otherwise fallback to relative path.
+    return import.meta.env.VITE_API_URL || '';
   };
 
   const handleFileSelect = (event) => {
@@ -29,7 +83,7 @@ const MediaTest = () => {
       setSelectedFile(file);
       setError('');
       setUploadedFile(null);
-      // Ensure the file input can select the same file again if needed
+      // Reset the input so the same file can be selected again after an action.
       event.target.value = null; 
     }
   };
@@ -47,11 +101,9 @@ const MediaTest = () => {
     try {
       // Step 1: Fetch temporary authentication parameters from our secure backend.
       const authApiUrl = `${getApiUrl()}/api/auth`;
-      console.log('Fetching auth params from:', authApiUrl);
       const response = await fetch(authApiUrl);
 
       if (!response.ok) {
-        // Try to get more detailed error from the server's JSON response
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Authentication server failed with status: ${response.status}`);
       }
@@ -69,8 +121,6 @@ const MediaTest = () => {
         file: selectedFile,
         fileName: fileName,
         folder: '/quiz-app-media-test',
-        // THE FIX: Provide the signature, token, and expire time directly.
-        // DO NOT provide `authenticationEndpoint` here or during initialization.
         signature: authParams.signature,
         expire: authParams.expire,
         token: authParams.token,
@@ -84,7 +134,6 @@ const MediaTest = () => {
       console.log('Upload successful:', result);
       
     } catch (err) {
-      // This will now log the detailed error message to the console.
       console.error('Upload error object:', err);
       setError(`Upload failed: ${err.message}`);
     } finally {
@@ -93,51 +142,7 @@ const MediaTest = () => {
   };
 
   const handleDelete = async () => {
-    // SECURITY: Client-side deletion is a privileged operation and is not secure.
-    // A proper implementation requires a dedicated backend endpoint (e.g., POST /api/delete-file)
-    // that validates the user's permission before using the private key to delete the file.
-    alert("Client-side deletion is disabled for security. This requires a dedicated backend endpoint.");
-    console.warn("Deletion was not performed. A secure backend endpoint is required.");
-  };
-
-  // --- Utility and Rendering Functions (No changes needed below) ---
-
-  const getFileType = (file) => {
-    if (!file) return 'unknown';
-    if (file.fileType === 'image' || file.fileType === 'video' || file.fileType === 'audio') return file.fileType;
-    const source = file.name || file.url || '';
-    if (/\.(jpe?g|png|gif|webp|svg)$/i.test(source)) return 'image';
-    if (/\.(mp4|webm|mov|ogg)$/i.test(source)) return 'video';
-    if (/\.(mp3|wav|aac|flac)$/i.test(source)) return 'audio';
-    const mimeType = file.type || '';
-    if (mimeType.startsWith('image/')) return 'image';
-    if (mimeType.startsWith('video/')) return 'video';
-    if (mimeType.startsWith('audio/')) return 'audio';
-    return 'unknown';
-  };
-
-  const renderPreview = (file) => {
-    const fileType = getFileType(file);
-    const url = file.url || URL.createObjectURL(file);
-    useEffect(() => {
-        // Clean up the object URL when the component unmounts or file changes
-        return () => {
-            if (file && !file.url) {
-                URL.revokeObjectURL(url);
-            }
-        };
-    }, [file, url]);
-
-    switch (fileType) {
-        case 'image':
-            return <img src={url} alt="Content preview" style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }} />;
-        case 'video':
-            return <video controls style={{ maxWidth: '100%', maxHeight: '300px' }}><source src={url} type={file.type || file.fileType} />Your browser does not support video playback.</video>;
-        case 'audio':
-            return <audio controls style={{ width: '100%' }}><source src={url} type={file.type || file.fileType} />Your browser does not support audio playback.</audio>;
-        default:
-            return <p style={{ color: '#888' }}>File type not supported for preview</p>;
-    }
+    alert("Client-side deletion is disabled for security. This feature requires a dedicated, secure backend endpoint.");
   };
 
   return (
@@ -156,7 +161,7 @@ const MediaTest = () => {
       </div>
 
       <div style={{ backgroundColor: '#e7f3ff', color: '#0c5460', padding: '12px', borderRadius: '4px', marginBottom: '20px', border: '1px solid #bee5eb', fontSize: '14px' }}>
-        <strong>🔗 API Endpoint Base:</strong> {getApiUrl() || '(Relative)'}
+        <strong>🔗 API Endpoint Base:</strong> {getApiUrl() || '(Relative Path)'}
       </div>
 
       <div style={{ border: '2px dashed #ddd', borderRadius: '8px', padding: '20px', textAlign: 'center', marginBottom: '20px', backgroundColor: '#fafafa' }}>
@@ -168,7 +173,7 @@ const MediaTest = () => {
               <p><strong>Selected:</strong> {selectedFile.name}</p>
               <div style={{ border: '1px solid #ccc', padding: '10px', marginTop: '10px', backgroundColor: '#fff' }}>
                 <h4>Local Preview:</h4>
-                {renderPreview(selectedFile)}
+                <MediaPreview file={selectedFile} />
               </div>
             </div>
         )}
@@ -211,7 +216,7 @@ const MediaTest = () => {
 
           <div style={{ border: '1px solid #c3e6cb', borderRadius: '4px', padding: '15px', backgroundColor: '#ffffff', textAlign: 'center' }}>
             <h4 style={{ marginTop: 0, marginBottom: '15px' }}>Preview from ImageKit:</h4>
-            {renderPreview(uploadedFile)}
+            <MediaPreview file={uploadedFile} />
           </div>
         </div>
       )}
