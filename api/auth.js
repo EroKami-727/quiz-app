@@ -1,38 +1,23 @@
-// /api/auth.js - Vercel Serverless Function with CORS fix
+// /api/auth.js - Corrected to use Vercel environment variables
 
 import ImageKit from 'imagekit';
 
-// Initialize ImageKit once outside the handler for better performance.
-// The serverless function will reuse this instance across requests.
-const imagekit = new ImageKit({
-  publicKey: process.env.PUBLIC_KEY,
-  privateKey: process.env.PRIVATE_KEY,
-  urlEndpoint: process.env.URL_ENDPOINT,
-});
-
+// === THIS IS THE FIX ===
+// The initialization is now inside the handler and reads the correct variable names.
+// This ensures that for every request, it checks the right environment variables.
 
 export default function handler(req, res) {
-  // =================================================================
   // Step 1: Add CORS Headers to every response
-  // This tells the browser that requests from any origin are allowed.
-  // =================================================================
-  res.setHeader('Access-Control-Allow-Origin', '*'); // For production, you might want to restrict this to your domain: 'https://quizzit-erokami.vercel.app'
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // =================================================================
   // Step 2: Handle the browser's "preflight" OPTIONS request
-  // This is a check the browser sends before the actual GET request.
-  // =================================================================
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
   
-  // =================================================================
-  // Step 3: Your existing logic
-  // =================================================================
-  
-  // Only allow GET requests for the actual data fetching
+  // Step 3: Your existing logic, now with corrected variable access
   if (req.method !== 'GET') {
     return res.status(405).json({ 
       success: false, 
@@ -41,19 +26,31 @@ export default function handler(req, res) {
   }
 
   try {
-    // Validate that all required environment variables are present
-    if (!process.env.PUBLIC_KEY || !process.env.PRIVATE_KEY || !process.env.URL_ENDPOINT) {
-      console.error('SERVER ERROR: Missing ImageKit environment variables on Vercel.');
+    // Read the variable names EXACTLY as they are in your Vercel settings.
+    const PUBLIC_KEY = process.env.IMAGEKIT_PUBLIC_KEY_API;
+    const PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY;
+    const URL_ENDPOINT = process.env.IMAGEKIT_URL_ENDPOINT_API;
+
+    // Validate that the variables were found.
+    if (!PUBLIC_KEY || !PRIVATE_KEY || !URL_ENDPOINT) {
+      console.error('SERVER ERROR: One or more ImageKit environment variables are missing or misnamed in Vercel settings.');
       return res.status(500).json({
         success: false,
         message: 'Server configuration error: Missing ImageKit credentials.'
       });
     }
 
-    // Generate authentication parameters
+    // Initialize ImageKit with the correct, validated variables.
+    const imagekit = new ImageKit({
+        publicKey: PUBLIC_KEY,
+        privateKey: PRIVATE_KEY,
+        urlEndpoint: URL_ENDPOINT,
+    });
+
+    // Generate authentication parameters.
     const authenticationParameters = imagekit.getAuthenticationParameters();
 
-    // Return the authentication parameters (no private key exposed)
+    // Return the successful response.
     return res.status(200).json({
       success: true,
       ...authenticationParameters
