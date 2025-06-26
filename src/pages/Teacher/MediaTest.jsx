@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ImageKit from 'imagekit';
+import ImageKit from 'imagekit-javascript';
 
 const MediaTest = () => {
   const navigate = useNavigate();
@@ -10,14 +10,55 @@ const MediaTest = () => {
   const [error, setError] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Initialize ImageKit with your credentials
-  // WARNING: Exposing your private key on the client-side is a major security risk.
-  // This should be handled by a backend server in a real production application.
-  const imagekit = new ImageKit({
-    publicKey: import.meta.env.VITE_PUBLIC_KEY || 'public_S7odQQNJQ6GFkz0nI0LUViCdWZ0=',
-    urlEndpoint: import.meta.env.VITE_URL_ENDPOINT || 'https://ik.imagekit.io/eqcotiqjq',
-    privateKey: import.meta.env.VITE_PRIVATE_KEY || 'private_DbCuICv2BtsPmzMRd6cXQHjPxIg='
-  });
+  // Function to get the appropriate API URL based on the environment
+  const getApiUrl = () => {
+    // Check if we have a custom API URL in environment variables (for teammates using external URL)
+    const customApiUrl = import.meta.env.VITE_API_URL;
+    
+    if (customApiUrl) {
+      // Use the custom API URL (production/preview URL)
+      return `${customApiUrl}/api/auth`;
+    }
+    
+    // Default to relative path (works with vercel dev and production)
+    return '/api/auth';
+  };
+
+  // Function to fetch authentication parameters from our secure backend
+  const getAuthParams = async () => {
+    try {
+      const apiUrl = getApiUrl();
+      console.log('Fetching auth params from:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to get authentication parameters');
+      }
+
+      return {
+        signature: data.signature,
+        expire: data.expire,
+        token: data.token,
+        publicKey: data.publicKey,
+        urlEndpoint: data.urlEndpoint
+      };
+    } catch (error) {
+      console.error('Error fetching auth params:', error);
+      throw new Error(`Authentication failed: ${error.message}`);
+    }
+  };
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -25,7 +66,6 @@ const MediaTest = () => {
       setSelectedFile(file);
       setError('');
       setUploadedFile(null);
-      // Also render a local preview immediately
     }
   };
 
@@ -40,51 +80,43 @@ const MediaTest = () => {
     setUploadProgress(0);
 
     try {
+      // Get authentication parameters from our secure backend
+      const authParams = await getAuthParams();
+      
+      // Initialize ImageKit with the authentication parameters (no private key!)
+      const imagekit = new ImageKit({
+        publicKey: authParams.publicKey,
+        urlEndpoint: authParams.urlEndpoint,
+        authenticationEndpoint: getApiUrl(), // Use our secure endpoint
+      });
+
       const fileName = `test_${Date.now()}_${selectedFile.name}`;
       
-      const fileReader = new FileReader();
-      
-      fileReader.onload = async (event) => {
-        try {
-          const base64 = event.target.result;
-          
-          const result = await imagekit.upload({
-            file: base64,
-            fileName: fileName,
-            folder: '/quiz-app-media-test'
-          });
-          
-          setUploadedFile(result);
-          setUploadProgress(100);
-          console.log('Upload successful:', result);
-        } catch (uploadError) {
-          console.error('Upload error:', uploadError);
-          setError(`Upload failed: ${uploadError.message}`);
-        } finally {
-          setIsUploading(false);
+      // Upload the file using ImageKit
+      const result = await imagekit.upload({
+        file: selectedFile,
+        fileName: fileName,
+        folder: '/quiz-app-media-test',
+        // Use the authentication parameters we got from the backend
+        signature: authParams.signature,
+        expire: authParams.expire,
+        token: authParams.token,
+      }, {
+        // Progress callback
+        onUploadProgress: (progress) => {
+          const percentComplete = Math.round((progress.loaded / progress.total) * 100);
+          setUploadProgress(percentComplete);
         }
-      };
-
-      fileReader.onerror = () => {
-        setError('Error reading file');
-        setIsUploading(false);
-      };
+      });
       
-      // Simulate progress for base64 upload
-      let progress = 0;
-      const progressInterval = setInterval(() => {
-        progress = Math.min(progress + 10, 90);
-        setUploadProgress(progress);
-        if (progress >= 90) {
-            clearInterval(progressInterval);
-        }
-      }, 150);
-
-      fileReader.readAsDataURL(selectedFile);
+      setUploadedFile(result);
+      setUploadProgress(100);
+      console.log('Upload successful:', result);
       
     } catch (error) {
-      console.error('Error:', error);
-      setError(`Error: ${error.message}`);
+      console.error('Upload error:', error);
+      setError(`Upload failed: ${error.message}`);
+    } finally {
       setIsUploading(false);
     }
   };
@@ -93,10 +125,20 @@ const MediaTest = () => {
     if (!uploadedFile) return;
 
     try {
+      // Get fresh authentication parameters for the delete operation
+      const authParams = await getAuthParams();
+      
+      // Initialize ImageKit for the delete operation
+      const imagekit = new ImageKit({
+        publicKey: authParams.publicKey,
+        urlEndpoint: authParams.urlEndpoint,
+        authenticationEndpoint: getApiUrl(),
+      });
+
       await imagekit.deleteFile(uploadedFile.fileId);
       setUploadedFile(null);
       setSelectedFile(null);
-      // Reset the file input field so the user can select the same file again
+      // Reset the file input field
       document.querySelector('input[type="file"]').value = '';
       console.log('File deleted successfully');
     } catch (error) {
@@ -105,20 +147,15 @@ const MediaTest = () => {
     }
   };
 
-  // ==================================================================
-  // FIXED FUNCTION: This is the updated, more robust getFileType function.
-  // It now checks the file extension in the name/URL as a fallback.
-  // ==================================================================
   const getFileType = (file) => {
     if (!file) return 'unknown';
 
-    // 1. Check for ImageKit's explicit fileType property (if available)
+    // Check for ImageKit's explicit fileType property
     if (file.fileType === 'image' || file.fileType === 'video' || file.fileType === 'audio') {
         return file.fileType;
     }
 
-    // 2. Fallback: Check the file's name or URL for an extension.
-    // This is the key fix for the post-upload preview.
+    // Fallback: Check the file's name or URL for an extension
     const source = file.name || file.url || '';
     if (/\.(jpe?g|png|gif|webp|svg)$/i.test(source)) {
         return 'image';
@@ -130,7 +167,7 @@ const MediaTest = () => {
         return 'audio';
     }
 
-    // 3. Last resort: Check the MIME type (useful for the local pre-upload preview)
+    // Check the MIME type
     const mimeType = file.type || '';
     if (mimeType.startsWith('image/')) return 'image';
     if (mimeType.startsWith('video/')) return 'video';
@@ -141,7 +178,6 @@ const MediaTest = () => {
 
   const renderPreview = (file) => {
     const fileType = getFileType(file);
-    // For local files (before upload), create a temporary URL. For uploaded files, use the ImageKit URL.
     const url = file.url || URL.createObjectURL(file);
 
     switch (fileType) {
@@ -151,7 +187,7 @@ const MediaTest = () => {
             src={url} 
             alt="Content preview" 
             style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
-            onLoad={() => { if (!file.url) URL.revokeObjectURL(url) }} // Clean up local URL
+            onLoad={() => { if (!file.url) URL.revokeObjectURL(url) }}
           />
         );
       case 'video':
@@ -159,7 +195,7 @@ const MediaTest = () => {
           <video 
             controls 
             style={{ maxWidth: '100%', maxHeight: '300px' }}
-            onCanPlay={() => { if (!file.url) URL.revokeObjectURL(url) }} // Clean up local URL
+            onCanPlay={() => { if (!file.url) URL.revokeObjectURL(url) }}
           >
             <source src={url} type={file.type || file.fileType} />
             Your browser does not support video playback.
@@ -186,10 +222,22 @@ const MediaTest = () => {
       color: '#333'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '2px solid #eee', paddingBottom: '15px' }}>
-        <h1 style={{ margin: 0 }}>ImageKit Media Test</h1>
+        <h1 style={{ margin: 0 }}>🔐 Secure ImageKit Media Test</h1>
         <button onClick={() => navigate('/teacher/home')} style={{ padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
           ← Back to Dashboard
         </button>
+      </div>
+
+      {/* API URL Info */}
+      <div style={{ backgroundColor: '#e7f3ff', color: '#0c5460', padding: '12px', borderRadius: '4px', marginBottom: '20px', border: '1px solid #bee5eb', fontSize: '14px' }}>
+        <strong>🔗 API Endpoint:</strong> {getApiUrl()}
+        <br />
+        <small>
+          {import.meta.env.VITE_API_URL ? 
+            '(Using custom API URL from VITE_API_URL)' : 
+            '(Using relative path - works with vercel dev and production)'
+          }
+        </small>
       </div>
 
       <div style={{ border: '2px dashed #ddd', borderRadius: '8px', padding: '20px', textAlign: 'center', marginBottom: '20px', backgroundColor: '#fafafa' }}>
@@ -207,7 +255,7 @@ const MediaTest = () => {
         )}
 
         <button onClick={handleUpload} disabled={!selectedFile || isUploading} style={{ padding: '10px 20px', backgroundColor: isUploading ? '#ccc' : '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '16px' }}>
-          {isUploading ? `Uploading...` : 'Upload to ImageKit'}
+          {isUploading ? `Uploading...` : '🔐 Secure Upload to ImageKit'}
         </button>
 
         {isUploading && (
@@ -222,14 +270,14 @@ const MediaTest = () => {
 
       {error && (
         <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '12px', borderRadius: '4px', marginBottom: '20px', border: '1px solid #f5c6cb' }}>
-          {error}
+          ❌ {error}
         </div>
       )}
 
       {uploadedFile && (
         <div style={{ backgroundColor: '#d4edda', color: '#155724', padding: '20px', borderRadius: '8px', border: '1px solid #c3e6cb', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 style={{ margin: 0 }}>✅ Upload Successful!</h3>
+            <h3 style={{ margin: 0 }}>✅ Secure Upload Successful!</h3>
             <button onClick={handleDelete} style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
               Delete File
             </button>
@@ -250,13 +298,17 @@ const MediaTest = () => {
       )}
 
       <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f8f9fa', color: '#343a40', border: '1px solid #dee2e6', borderRadius: '4px', fontSize: '14px', lineHeight: '1.5' }}>
-        <h4 style={{ marginTop: 0 }}>How to test:</h4>
+        <h4 style={{ marginTop: 0 }}>🔐 Secure Upload Test Instructions:</h4>
         <ol style={{ paddingLeft: '20px' }}>
           <li>Select an image, video, or audio file. You will see a local preview.</li>
-          <li>Click "Upload to ImageKit" to start the upload.</li>
-          <li>After a successful upload, you will see the file details and a new preview rendered directly from the ImageKit URL.</li>
+          <li>Click "🔐 Secure Upload to ImageKit" to start the secure upload process.</li>
+          <li>The app will fetch authentication parameters from the secure backend API.</li>
+          <li>After a successful upload, you will see the file details and a preview from ImageKit.</li>
           <li>Optionally, click "Delete File" to remove it from your ImageKit account.</li>
         </ol>
+        <p style={{ marginBottom: 0, fontWeight: 'bold', color: '#28a745' }}>
+          ✅ No private keys are exposed to the client-side!
+        </p>
       </div>
     </div>
   );

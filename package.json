@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
-    "imagekit": "^5.3.0",
-    "@imagekit/react": "^4.3.2",
     "firebase": "^11.6.0",
+    "imagekit": "^6.0.0",
+    "imagekit-javascript": "^4.0.1",
     "lucide-react": "^0.511.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
