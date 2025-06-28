@@ -54,7 +54,6 @@ const TeacherHome = () => {
       dataFetched.current = true;
       fetchDashboardData();
     } else if (currentUser === null) {
-        // If auth context explicitly says no user, stop loading and let ProtectedRoute handle it.
         setLoading(false); 
     }
   }, [currentUser]);
@@ -62,7 +61,7 @@ const TeacherHome = () => {
   const fetchDashboardData = async () => {
     setLoading(true); 
     try {
-      if (!currentUser) { // Guard against null currentUser
+      if (!currentUser) {
           setLoading(false);
           return;
       }
@@ -75,9 +74,10 @@ const TeacherHome = () => {
       const quizzes = quizzesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const activeCount = quizzes.filter(q => q.active).length;
 
+      // Assuming quiz_results has teacherId for accurate scoping
       const sessionsQuery = query(
         collection(db, "quiz_results"),
-        where("teacherId", "==", currentUser.uid) // Assuming quiz_results has teacherId
+        where("teacherId", "==", currentUser.uid) 
       );
       const sessionsSnapshot = await getDocs(sessionsQuery);
       const uniqueStudents = new Set(sessionsSnapshot.docs.map(doc => doc.data().userId));
@@ -90,7 +90,7 @@ const TeacherHome = () => {
       });
 
       const activity = quizzes
-        .sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis())
+        .sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0))
         .slice(0, 3)
         .map(quiz => ({
         type: 'quiz_created',
@@ -119,7 +119,8 @@ const TeacherHome = () => {
   const handleSignOut = () => signOut(auth).then(() => navigate('/teacher/login')).catch(console.error);
   const handleYourQuizzes = () => navigate('/teacher/your-quizzes');
   const handleCreateQuizClick = () => setIsQuizTypeModalOpen(true);
-  const handleMediaTest = () => navigate('/teacher/media-test');
+  const handleMediaTest = () => navigate('/teacher/media-test'); // Keeping the test page for now
+  
   const handleSelectQuizType = (type) => {
     setIsQuizTypeModalOpen(false);
     navigate('/teacher/create-quiz', { state: { quizType: type } });
@@ -231,6 +232,14 @@ const TeacherHome = () => {
               <div className="quiz-type-card" onClick={() => handleSelectQuizType('CATEGORIZE')}><i className="fas fa-sitemap card-type-icon"></i><h3>Categorize Items</h3><p>Sort items into the correct groups.</p></div>
               <div className="quiz-type-card" onClick={() => handleSelectQuizType('REORDER')}><i className="fas fa-sort-amount-down card-type-icon"></i><h3>Reorder Sequence</h3><p>Arrange items in the correct order.</p></div>
               <div className="quiz-type-card" onClick={() => handleSelectQuizType('READING_COMPREHENSION')}><i className="fas fa-book-reader card-type-icon"></i><h3>Reading Comprehension</h3><p>A passage with follow-up questions.</p></div>
+              
+              {/* === NEWLY ADDED CARD FOR LABELING === */}
+              <div className="quiz-type-card" onClick={() => handleSelectQuizType('LABELING')}>
+                <i className="fas fa-map-marker-alt card-type-icon"></i>
+                <h3>Image Labeling</h3>
+                <p>Add interactive labels to an image.</p>
+              </div>
+
               <div className="quiz-type-card" onClick={() => handleSelectQuizType('MIXED')}><i className="fas fa-cubes card-type-icon"></i><h3>Custom/Mixed Quiz</h3><p>Combine all question types for a complex assessment.</p></div>
             </div>
           </div>
