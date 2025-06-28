@@ -540,3 +540,125 @@
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(71, 118, 230, 0.4);
 }
+
+/* === ENHANCED STYLES FOR INTERACTIVITY === */
+
+/* General media asset styling */
+.question-media-asset {
+  display: block;
+  max-width: 100%;
+  max-height: 400px; /* Taller height for main media */
+  margin: 0 auto 1.5rem auto;
+  border-radius: 8px;
+}
+.question-media-asset.audio {
+  width: 100%;
+}
+
+/* MCQ option with media */
+.option-item {
+  flex-wrap: wrap; /* Allow text and media to wrap on small screens */
+}
+.option-item .option-text {
+  flex-grow: 1;
+}
+.option-item .question-media-asset {
+  max-width: 120px;
+  max-height: 90px;
+  margin: 0;
+}
+
+
+/* --- Match the Following Enhancements --- */
+.match-dnd-container {
+    grid-template-columns: 1.5fr 1fr;
+}
+.match-prompt-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+}
+.match-prompt-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+.match-drop-area {
+    flex: 1;
+}
+.draggable-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.draggable-option .question-media-asset {
+    width: 40px;
+    height: 30px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+/* --- Reorder Item with Media --- */
+.reorder-item .reorder-item-media {
+    width: 50px;
+    height: 40px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+/* --- Categorize Item with Media --- */
+.categorize-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.categorize-item .question-media-asset {
+    width: 40px;
+    height: 30px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+/* --- Navigation Enhancements --- */
+.nav-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* --- Final Score Screen Enhancements --- */
+.score-breakdown {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background-color: #f7f9fc;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  color: #4a5568;
+}
+.score-breakdown span {
+  font-weight: 600;
+  color: #2d3748;
+}
+.score-breakdown .bonus-points {
+  color: #38a169;
+  font-weight: 700;
+}
+.score-circle.final-score {
+  width: 200px;
+  height: 200px;
+  flex-direction: column;
+}
+.score-circle.final-score .score-label {
+  font-size: 1.2rem;
+  opacity: 0.8;
+  margin-bottom: -0.5rem;
+}
+.score-circle.final-score .score-value {
+  font-size: 5rem;
+}
