@@ -1,476 +1,188 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getAuth, signOut } from 'firebase/auth';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../../styles/Teacher/CreateQuiz.css';
-import { FaTrashAlt, FaPlus, FaClipboard, FaTimes, FaArrowLeft, FaGripLines } from 'react-icons/fa';
+import { FaTrashAlt, FaPlus, FaClipboard, FaTimes, FaArrowLeft, FaPhotoVideo, FaGripLines, FaSave, FaLaptop, FaPaste } from 'react-icons/fa';
+import ImageKit from 'imagekit-javascript';
+import MediaPreview from '../../components/MediaPreview';
 
-// Default structures for each question type
-const defaultMCQ = { type: 'MCQ', text: '', options: ['', '', '', ''], correctOption: 0, points: 10 };
-const defaultFillBlank = { type: 'FILL_IN_THE_BLANK', text: '', answers: [], caseSensitive: false, points: 10 };
-const defaultParagraph = { type: 'PARAGRAPH', text: '', gradingKeywords: [], points: 20 };
-// --- NEW ---
-const defaultMatch = { type: 'MATCH_THE_FOLLOWING', text: '', pairs: [{ prompt: '', option: '' }], points: 10 };
-const defaultCategorize = { type: 'CATEGORIZE', text: '', categories: [], items: [{ text: '', category: '' }], points: 10 };
-const defaultReorder = { type: 'REORDER', text: '', items: ['', ''], points: 10 };
-const defaultComprehension = { type: 'READING_COMPREHENSION', text: '', passage: '', subQuestions: [], points: 20 };
+// Initialize the SDK once.
+const imagekit = new ImageKit({
+  publicKey: import.meta.env.VITE_PUBLIC_KEY,
+  urlEndpoint: import.meta.env.VITE_URL_ENDPOINT,
+});
+
+// The single source of truth for creating question data structures.
+const generateNewQuestion = (type) => {
+    const baseQuestion = { id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, type: type, questionText: '', points: 10, timeLimit: 60, media: null, localMediaFile: null };
+    switch (type) {
+        case 'MCQ': return { ...baseQuestion, mcqData: { options: [{ id: Date.now() + 1, text: '', media: null, localMediaFile: null }, { id: Date.now() + 2, text: '', media: null, localMediaFile: null }], correctOptions: [] } };
+        case 'FILL_IN_THE_BLANK': return { ...baseQuestion, fillBlankData: { answers: [{ text: '' }], caseSensitive: false } };
+        case 'PARAGRAPH': return { ...baseQuestion, paragraphData: { keywords: [{ text: '' }] } };
+        case 'MATCH_THE_FOLLOWING': return { ...baseQuestion, points: 20, matchData: { pairs: [{ id: Date.now(), prompt: '', promptMedia: null, promptLocalMediaFile: null, answer: '', answerMedia: null, answerLocalMediaFile: null }] } };
+        case 'CATEGORIZE': return { ...baseQuestion, points: 20, categorizeData: { categories: [{ id: Date.now(), name: 'Category 1' }], items: [{ id: Date.now() + 1, text: '', categoryId: null, media: null, localMediaFile: null }] } };
+        case 'REORDER': return { ...baseQuestion, reorderData: { items: [{ id: Date.now(), text: '', media: null, localMediaFile: null }] } };
+        case 'VISUAL_COMPREHENSION': return { ...baseQuestion, points: 20, visualData: { mainMedia: null, localMainMediaFile: null, subQuestions: [generateNewQuestion('MCQ')] } };
+        case 'LISTENING_COMPREHENSION': return { ...baseQuestion, points: 20, listeningData: { mainMedia: null, localMainMediaFile: null, subQuestions: [generateNewQuestion('MCQ')] } };
+        default: return { ...baseQuestion, mcqData: { options: [{ id: Date.now() + 1, text: '', media: null, localMediaFile: null }, { id: Date.now() + 2, text: '', media: null, localMediaFile: null }], correctOptions: [] } };
+    }
+};
+
+const UploadChoiceModal = ({ onChoice, onClose }) => (
+    <div className="upload-choice-modal-overlay" onClick={onClose}><div className="upload-choice-modal-content" onClick={(e) => e.stopPropagation()}><h3>Add Media</h3><p>Choose how you want to add your media file.</p><div className="upload-choices"><button onClick={() => onChoice('upload')} className="upload-choice-btn"><FaLaptop /><span>Upload from Computer</span></button><button onClick={() => onChoice('paste')} className="upload-choice-btn"><FaPaste /><span>Paste from Clipboard</span></button></div><button className="close-modal-btn-simple" onClick={onClose}><FaTimes /></button></div></div>
+);
 
 const CreateQuiz = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const auth = getAuth();
     const { currentUser } = useAuth();
-
+    
+    // State variables
     const [quizType, setQuizType] = useState(location.state?.quizType || 'MIXED');
-
-    const getInitialQuestion = (type) => {
-        switch (type) {
-            case 'MCQ': return { ...defaultMCQ };
-            case 'FILL_IN_THE_BLANK': return { ...defaultFillBlank };
-            case 'PARAGRAPH': return { ...defaultParagraph };
-            // --- NEW ---
-            case 'MATCH_THE_FOLLOWING': return { ...defaultMatch, pairs: [{ prompt: '', option: '' }] };
-            case 'CATEGORIZE': return { ...defaultCategorize, categories: [], items: [{ text: '', category: '' }] };
-            case 'REORDER': return { ...defaultReorder, items: ['', ''] };
-            case 'READING_COMPREHENSION': return { ...defaultComprehension, subQuestions: [] };
-            default: return { ...defaultMCQ };
-        }
-    };
-
-    // State Management
     const [userDisplayName, setUserDisplayName] = useState('');
     const [loading, setLoading] = useState(true);
     const [quizTitle, setQuizTitle] = useState('');
     const [quizDescription, setQuizDescription] = useState('');
-    const [overallTimeLimit, setOverallTimeLimit] = useState(300);
-    const [questions, setQuestions] = useState([getInitialQuestion(quizType)]);
+    const [questions, setQuestions] = useState([generateNewQuestion(quizType === 'MIXED' ? 'MCQ' : quizType)]);
     const [isPublished, setIsPublished] = useState(false);
     const [generatedCode, setGeneratedCode] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [mediaTarget, setMediaTarget] = useState(null);
+    const hiddenFileInput = useRef(null);
 
-    useEffect(() => {
-        if (currentUser) {
-            const fetchUserData = async () => {
-                const userDocRef = doc(db, 'users', currentUser.uid);
-                const userDocSnap = await getDoc(userDocRef);
-                setUserDisplayName(userDocSnap.exists() ? userDocSnap.data().displayName || 'Teacher' : 'Teacher');
-                setLoading(false);
-            };
-            fetchUserData();
-        }
-    }, [currentUser]);
-
-    const generateQuizCode = () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').sort(() => 0.5 - Math.random()).join('').slice(0, 6);
-    const handleSignOut = () => signOut(auth).then(() => navigate('/teacher/login')).catch(console.error);
-
-    const handleAddQuestion = () => {
-        const newQuestionType = quizType === 'MIXED' ? 'MCQ' : quizType;
-        setQuestions([...questions, getInitialQuestion(newQuestionType)]);
+    useEffect(() => { if (currentUser) { const fetchUserData = async () => { const userDocRef = doc(db, 'users', currentUser.uid); const userDocSnap = await getDoc(userDocRef); setUserDisplayName(userDocSnap.exists() ? userDocSnap.data().displayName || 'Teacher' : 'Teacher'); setLoading(false); }; fetchUserData(); } else { setLoading(false); } }, [currentUser]);
+    
+    // --- State Handlers using the correct immutable pattern ---
+    const handleAddQuestion = () => setQuestions(current => [...current, generateNewQuestion(quizType === 'MIXED' ? 'MCQ' : quizType)]);
+    const handleRemoveQuestion = (qIndex) => questions.length > 1 && setQuestions(current => current.filter((_, i) => i !== qIndex));
+    const handleQuestionChange = (qIndex, field, value) => { setQuestions(current => current.map((q, i) => i === qIndex ? { ...q, [field]: value } : q)); };
+    const handleQuestionTypeChange = (qIndex, newType) => { const old = questions[qIndex]; const newQuestion = { ...generateNewQuestion(newType), id: old.id, questionText: old.questionText, points: old.points, timeLimit: old.timeLimit, media: old.media, localMediaFile: old.localMediaFile }; setQuestions(current => current.map((q, i) => i === qIndex ? newQuestion : q)); };
+    
+    // Media Handlers
+    const openUploadModal = (target) => { setMediaTarget(target); setIsUploadModalOpen(true); };
+    const handleUploadChoice = async (choice) => { if (!mediaTarget) return; if (choice === 'upload') { hiddenFileInput.current.click(); } else if (choice === 'paste') { try { const clipboardItems = await navigator.clipboard.read(); for (const item of clipboardItems) { const imageType = item.types.find(type => type.startsWith('image/')); if (imageType) { const blob = await item.getType(imageType); const imageFile = new File([blob], `pasted-image-${Date.now()}.${blob.type.split('/')[1]}`, { type: blob.type }); handleFile(imageFile, mediaTarget); break; } } } catch (err) { console.error('Clipboard API error:', err); setError('Could not read image from clipboard. Please try uploading the file instead.'); } } setIsUploadModalOpen(false); };
+    const handleFileSelected = (event) => { const file = event.target.files[0]; if (file && mediaTarget) { handleFile(file, mediaTarget); } event.target.value = null; setMediaTarget(null); };
+    
+    const handleFile = (file, target) => {
+        const { qIndex, field, oIndex, pairIndex, itemIndex } = target;
+        setQuestions(currentQs =>
+            currentQs.map((q, i) => {
+                if (i !== qIndex) return q;
+                if (field === 'questionMedia') return { ...q, localMediaFile: file, media: null };
+                if (field === 'mcqOptionMedia') { const newOptions = q.mcqData.options.map((opt, optI) => optI === oIndex ? { ...opt, localMediaFile: file, media: null } : opt); return { ...q, mcqData: { ...q.mcqData, options: newOptions } }; }
+                if (field === 'matchPromptMedia') { const newPairs = q.matchData.pairs.map((p, pI) => pI === pairIndex ? { ...p, promptLocalMediaFile: file, promptMedia: null } : p); return { ...q, matchData: { ...q.matchData, pairs: newPairs } }; }
+                if (field === 'matchAnswerMedia') { const newPairs = q.matchData.pairs.map((p, pI) => pI === pairIndex ? { ...p, answerLocalMediaFile: file, answerMedia: null } : p); return { ...q, matchData: { ...q.matchData, pairs: newPairs } }; }
+                if (field === 'categorizeItemMedia') { const newItems = q.categorizeData.items.map((item, itemI) => itemI === itemIndex ? { ...item, localMediaFile: file, media: null } : item); return { ...q, categorizeData: { ...q.categorizeData, items: newItems } }; }
+                if (field === 'reorderItemMedia') { const newItems = q.reorderData.items.map((item, itemI) => itemI === itemIndex ? { ...item, localMediaFile: file, media: null } : item); return { ...q, reorderData: { ...q.reorderData, items: newItems } }; }
+                if (field === 'visualMainMedia') return { ...q, visualData: { ...q.visualData, localMainMediaFile: file, mainMedia: null } };
+                if (field === 'listeningMainMedia') return { ...q, listeningData: { ...q.listeningData, localMainMediaFile: file, mainMedia: null } };
+                return q;
+            })
+        );
     };
 
-    const handleRemoveQuestion = (index) => {
-        if (questions.length > 1) {
-            setQuestions(questions.filter((_, i) => i !== index));
-        } else {
-            setError('A quiz must have at least one question.');
-            setTimeout(() => setError(''), 3000);
-        }
-    };
-
-    const handleQuestionFieldChange = (index, field, value) => {
-        const newQuestions = [...questions];
-        newQuestions[index][field] = value;
-        setQuestions(newQuestions);
-    };
-
-    const handleQuestionTypeChange = (index, newType) => {
-        const newQuestions = [...questions];
-        const currentQuestion = newQuestions[index];
-        const commonProps = { text: currentQuestion.text, points: currentQuestion.points };
-        newQuestions[index] = { ...getInitialQuestion(newType), ...commonProps };
-        setQuestions(newQuestions);
+    const handleRemoveMedia = (qIndex, field, oIndex, pairIndex, itemIndex) => {
+        setQuestions(currentQs =>
+            currentQs.map((q, i) => {
+                if (i !== qIndex) return q;
+                if (field === 'questionMedia') return { ...q, localMediaFile: null, media: null };
+                if (field === 'mcqOptionMedia') { const newOptions = q.mcqData.options.map((opt, optI) => optI === oIndex ? { ...opt, localMediaFile: null, media: null } : opt); return { ...q, mcqData: { ...q.mcqData, options: newOptions } }; }
+                if (field === 'matchPromptMedia') { const newPairs = q.matchData.pairs.map((p, pI) => pI === pairIndex ? { ...p, promptLocalMediaFile: null, promptMedia: null } : p); return { ...q, matchData: { ...q.matchData, pairs: newPairs } }; }
+                if (field === 'matchAnswerMedia') { const newPairs = q.matchData.pairs.map((p, pI) => pI === pairIndex ? { ...p, answerLocalMediaFile: null, answerMedia: null } : p); return { ...q, matchData: { ...q.matchData, pairs: newPairs } }; }
+                if (field === 'categorizeItemMedia') { const newItems = q.categorizeData.items.map((item, itemI) => itemI === itemIndex ? { ...item, localMediaFile: null, media: null } : item); return { ...q, categorizeData: { ...q.categorizeData, items: newItems } }; }
+                if (field === 'reorderItemMedia') { const newItems = q.reorderData.items.map((item, itemI) => itemI === itemIndex ? { ...item, localMediaFile: null, media: null } : item); return { ...q, reorderData: { ...q.reorderData, items: newItems } }; }
+                if (field === 'visualMainMedia') return { ...q, visualData: { ...q.visualData, localMainMediaFile: null, mainMedia: null } };
+                if (field === 'listeningMainMedia') return { ...q, listeningData: { ...q.listeningData, localMainMediaFile: null, mainMedia: null } };
+                return q;
+            })
+        );
     };
     
-    const handleOptionChange = (qIndex, oIndex, value) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].options[oIndex] = value;
-        setQuestions(newQuestions);
-    };
+    // Specific Question Type Handlers
+    const handleMCQOptionChange = (qIndex, oIndex, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, mcqData: { ...q.mcqData, options: q.mcqData.options.map((opt, optI) => optI === oIndex ? { ...opt, text: value } : opt) } } : q));
+    const handleMCQCorrectToggle = (qIndex, oIndex) => setQuestions(currentQs => currentQs.map((q, i) => { if (i !== qIndex) return q; const optionId = q.mcqData.options[oIndex].id; const newCorrectOptions = q.mcqData.correctOptions.includes(optionId) ? q.mcqData.correctOptions.filter(id => id !== optionId) : [...q.mcqData.correctOptions, optionId]; return { ...q, mcqData: { ...q.mcqData, correctOptions: newCorrectOptions } }; }));
+    const handleAddMCQOption = (qIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, mcqData: { ...q.mcqData, options: [...q.mcqData.options, { id: Date.now(), text: '', media: null, localMediaFile: null }] } } : q));
+    const handleRemoveMCQOption = (qIndex, oIndex) => { if (questions[qIndex].mcqData.options.length <= 2) return; setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, mcqData: { ...q.mcqData, options: q.mcqData.options.filter((_, optI) => optI !== oIndex) } } : q)); };
+    const handleFillBlankAnswerChange = (qIndex, ansIndex, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, fillBlankData: { ...q.fillBlankData, answers: q.fillBlankData.answers.map((ans, ansI) => ansI === ansIndex ? { ...ans, text: value } : ans) } } : q));
+    const handleAddFillBlankAnswer = (qIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, fillBlankData: { ...q.fillBlankData, answers: [...q.fillBlankData.answers, { text: '' }] } } : q));
+    const handleRemoveFillBlankAnswer = (qIndex, ansIndex) => { if (questions[qIndex].fillBlankData.answers.length <= 1) return; setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, fillBlankData: { ...q.fillBlankData, answers: q.fillBlankData.answers.filter((_, ansI) => ansI !== ansIndex) } } : q)); };
+    const handleParagraphKeywordChange = (qIndex, keyIndex, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, paragraphData: { ...q.paragraphData, keywords: q.paragraphData.keywords.map((key, keyI) => keyI === keyIndex ? { ...key, text: value } : key) } } : q));
+    const handleAddParagraphKeyword = (qIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, paragraphData: { ...q.paragraphData, keywords: [...q.paragraphData.keywords, { text: '' }] } } : q));
+    const handleRemoveParagraphKeyword = (qIndex, keyIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, paragraphData: { ...q.paragraphData, keywords: q.paragraphData.keywords.filter((_, keyI) => keyI !== keyIndex) } } : q));
+    const handleMatchPairChange = (qIndex, pairIndex, field, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, matchData: { ...q.matchData, pairs: q.matchData.pairs.map((p, pI) => pI === pairIndex ? { ...p, [field]: value } : p) } } : q));
+    const handleAddMatchPair = (qIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, matchData: { ...q.matchData, pairs: [...q.matchData.pairs, { id: Date.now(), prompt: '', answer: '' }] } } : q));
+    const handleRemoveMatchPair = (qIndex, pIndex) => { if (questions[qIndex].matchData.pairs.length <= 1) return; setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, matchData: { ...q.matchData, pairs: q.matchData.pairs.filter((_, pairI) => pairI !== pIndex) } } : q)); };
+    const handleCategoryNameChange = (qIndex, catIndex, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, categorizeData: { ...q.categorizeData, categories: q.categorizeData.categories.map((c, cI) => cI === catIndex ? { ...c, name: value } : c) } } : q));
+    const handleAddCategory = (qIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, categorizeData: { ...q.categorizeData, categories: [...q.categorizeData.categories, { id: Date.now(), name: `Category ${q.categorizeData.categories.length + 1}` }] } } : q));
+    const handleRemoveCategory = (qIndex, catIndex) => { if (questions[qIndex].categorizeData.categories.length <= 1) return; setQuestions(currentQs => currentQs.map((q, i) => { if (i !== qIndex) return q; const catIdToRemove = q.categorizeData.categories[catIndex].id; const newCategories = q.categorizeData.categories.filter((_, cI) => cI !== catIndex); const newItems = q.categorizeData.items.map(item => item.categoryId === catIdToRemove ? { ...item, categoryId: newCategories[0]?.id || null } : item); return { ...q, categorizeData: { ...q.categorizeData, categories: newCategories, items: newItems } }; })); };
+    const handleCategorizeItemChange = (qIndex, itemIndex, field, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, categorizeData: { ...q.categorizeData, items: q.categorizeData.items.map((item, iI) => iI === itemIndex ? { ...item, [field]: value } : item) } } : q));
+    const handleAddCategorizeItem = (qIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, categorizeData: { ...q.categorizeData, items: [...q.categorizeData.items, { id: Date.now(), text: '', categoryId: q.categorizeData.categories[0]?.id || null, media: null, localMediaFile: null }] } } : q));
+    const handleRemoveCategorizeItem = (qIndex, iIndex) => { if (questions[qIndex].categorizeData.items.length <= 1) return; setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, categorizeData: { ...q.categorizeData, items: q.categorizeData.items.filter((_, itemI) => itemI !== iIndex) } } : q)); };
+    const handleReorderItemChange = (qIndex, itemIndex, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, reorderData: { ...q.reorderData, items: q.reorderData.items.map((item, iI) => iI === itemIndex ? { ...item, text: value } : item) } } : q));
+    const handleAddReorderItem = (qIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, reorderData: { ...q.reorderData, items: [...q.reorderData.items, { id: Date.now(), text: '', media: null, localMediaFile: null }] } } : q));
+    const handleRemoveReorderItem = (qIndex, iIndex) => { if (questions[qIndex].reorderData.items.length <= 1) return; setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, reorderData: { ...q.reorderData, items: q.reorderData.items.filter((_, itemI) => itemI !== iIndex) } } : q)); };
+    const handleAddSubQuestion = (qIndex, compType, subQType) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, [compType]: { ...q[compType], subQuestions: [...q[compType].subQuestions, generateNewQuestion(subQType)] } } : q));
+    const handleRemoveSubQuestion = (qIndex, compType, subQIndex) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, [compType]: { ...q[compType], subQuestions: q[compType].subQuestions.filter((_, sqI) => sqI !== subQIndex) } } : q));
+    const handleSubQuestionChange = (qIndex, compType, subQIndex, field, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, [compType]: { ...q[compType], subQuestions: q[compType].subQuestions.map((subQ, sqI) => sqI === subQIndex ? { ...subQ, [field]: value } : subQ) } } : q));
+    const handleSubMCQOptionChange = (qIndex, compType, subQIndex, oIndex, value) => setQuestions(currentQs => currentQs.map((q, i) => i === qIndex ? { ...q, [compType]: { ...q[compType], subQuestions: q[compType].subQuestions.map((sq, sqI) => sqI === subQIndex ? { ...sq, mcqData: { ...sq.mcqData, options: sq.mcqData.options.map((opt, optI) => optI === oIndex ? { ...opt, text: value } : opt) } } : sq) } } : q));
+    const handleSubMCQCorrectToggle = (qIndex, compType, subQIndex, oIndex) => setQuestions(currentQs => currentQs.map((q, i) => { if (i !== qIndex) return q; const subQ = q[compType].subQuestions[subQIndex]; const optionId = subQ.mcqData.options[oIndex].id; const newCorrectOptions = subQ.mcqData.correctOptions.includes(optionId) ? subQ.mcqData.correctOptions.filter(id => id !== optionId) : [...subQ.mcqData.correctOptions, optionId]; return { ...q, [compType]: { ...q[compType], subQuestions: q[compType].subQuestions.map((sq, sqI) => sqI === subQIndex ? { ...sq, mcqData: { ...sq.mcqData, correctOptions: newCorrectOptions } } : sq) } }; }));
 
-    const handleCommaSeparatedChange = (qIndex, field, value) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex][field] = value.split(',').map(item => item.trim());
-        setQuestions(newQuestions);
-    };
-
-    // --- NEW: Specific handlers for new question types ---
-    
-    // For Match the Following
-    const handleAddMatchPair = qIndex => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].pairs.push({ prompt: '', option: '' });
-        setQuestions(newQuestions);
-    };
-    const handleRemoveMatchPair = (qIndex, pairIndex) => {
-        const newQuestions = [...questions];
-        if (newQuestions[qIndex].pairs.length > 1) {
-            newQuestions[qIndex].pairs.splice(pairIndex, 1);
-            setQuestions(newQuestions);
-        }
-    };
-    const handleMatchPairChange = (qIndex, pairIndex, field, value) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].pairs[pairIndex][field] = value;
-        setQuestions(newQuestions);
-    };
-
-    // For Categorize
-    const handleAddCategorizeItem = qIndex => {
-        const newQuestions = [...questions];
-        const firstCategory = newQuestions[qIndex].categories[0] || '';
-        newQuestions[qIndex].items.push({ text: '', category: firstCategory });
-        setQuestions(newQuestions);
-    };
-    const handleRemoveCategorizeItem = (qIndex, itemIndex) => {
-        const newQuestions = [...questions];
-        if (newQuestions[qIndex].items.length > 1) {
-            newQuestions[qIndex].items.splice(itemIndex, 1);
-            setQuestions(newQuestions);
-        }
-    };
-    const handleCategorizeItemChange = (qIndex, itemIndex, field, value) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].items[itemIndex][field] = value;
-        setQuestions(newQuestions);
-    };
-
-    // For Reorder
-    const handleAddReorderItem = qIndex => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].items.push('');
-        setQuestions(newQuestions);
-    };
-    const handleRemoveReorderItem = (qIndex, itemIndex) => {
-        const newQuestions = [...questions];
-        if (newQuestions[qIndex].items.length > 2) {
-            newQuestions[qIndex].items.splice(itemIndex, 1);
-            setQuestions(newQuestions);
-        }
-    };
-    const handleReorderItemChange = (qIndex, itemIndex, value) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].items[itemIndex] = value;
-        setQuestions(newQuestions);
-    };
-    
-    // For Reading Comprehension
-    const handleAddSubQuestion = (qIndex) => {
-        const newQuestions = [...questions];
-        // For simplicity, we'll only allow adding MCQ as sub-questions for now
-        newQuestions[qIndex].subQuestions.push({ type: 'MCQ', text: '', options: ['', ''], correctOption: 0, points: 5 });
-        setQuestions(newQuestions);
-    };
-     const handleRemoveSubQuestion = (qIndex, subQIndex) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].subQuestions.splice(subQIndex, 1);
-        setQuestions(newQuestions);
-    };
-    const handleSubQuestionChange = (qIndex, subQIndex, field, value) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].subQuestions[subQIndex][field] = value;
-        setQuestions(newQuestions);
-    };
-    const handleSubQuestionOptionChange = (qIndex, subQIndex, optIndex, value) => {
-        const newQuestions = [...questions];
-        newQuestions[qIndex].subQuestions[subQIndex].options[optIndex] = value;
-        setQuestions(newQuestions);
-    };
-
-    const validateQuiz = () => { /* ...validation logic... */ return true; };
-
-    const handlePublishQuiz = async () => {
-        if (!validateQuiz() || !currentUser) return;
-        setIsSubmitting(true);
-        try {
-            const quizCode = generateQuizCode();
-            const totalPoints = questions.reduce((sum, q) => {
-                if(q.type === 'READING_COMPREHENSION') {
-                    // For comprehension, sum points of sub-questions
-                    const subPoints = q.subQuestions.reduce((subSum, subQ) => subSum + (parseInt(subQ.points, 10) || 0), 0);
-                    return sum + subPoints;
-                }
-                return sum + (parseInt(q.points, 10) || 0);
-            }, 0);
-            
-            const quizData = {
-                title: quizTitle,
-                description: quizDescription,
-                code: quizCode,
-                quizType: quizType,
-                createdBy: currentUser.uid,
-                username: userDisplayName,
-                createdAt: serverTimestamp(),
-                active: true,
-                overallTimeLimit: Math.max(10, parseInt(overallTimeLimit, 10) || 300),
-                totalPoints: totalPoints,
-                questions: questions.map(q => {
-                    const questionToSave = { type: q.type, text: q.text, points: parseInt(q.points, 10) || 0 };
-                    if (q.type === 'READING_COMPREHENSION') {
-                        // For comprehension, points are on sub-questions
-                        questionToSave.points = q.subQuestions.reduce((subSum, subQ) => subSum + (parseInt(subQ.points, 10) || 0), 0);
-                    }
-                    switch (q.type) {
-                        case 'MCQ': questionToSave.options = q.options; questionToSave.correctOption = q.correctOption; break;
-                        case 'FILL_IN_THE_BLANK': questionToSave.answers = q.answers.filter(Boolean); questionToSave.caseSensitive = q.caseSensitive; break;
-                        case 'PARAGRAPH': questionToSave.gradingKeywords = q.gradingKeywords.filter(Boolean); break;
-                        // --- NEW: Data to save for new question types ---
-                        case 'MATCH_THE_FOLLOWING':
-                            const validPairs = q.pairs.filter(p => p.prompt.trim() && p.option.trim());
-                            questionToSave.prompts = validPairs.map(p => p.prompt);
-                            questionToSave.options = validPairs.map(p => p.option);
-                            questionToSave.correctMatches = Object.fromEntries(validPairs.map(p => [p.prompt, p.option]));
-                            break;
-                        case 'CATEGORIZE':
-                            questionToSave.categories = q.categories.filter(Boolean);
-                            questionToSave.items = q.items.filter(item => item.text.trim() && item.category.trim());
-                            break;
-                        case 'REORDER':
-                            questionToSave.items = q.items.filter(item => item.trim());
-                            break;
-                        case 'READING_COMPREHENSION':
-                            questionToSave.passage = q.passage;
-                            questionToSave.subQuestions = q.subQuestions.map(sq => ({
-                                ...sq,
-                                points: parseInt(sq.points, 10) || 0
-                            }));
-                            break;
-                        default: break;
-                    }
-                    return questionToSave;
-                }),
-            };
-            await addDoc(collection(db, "quizzes"), quizData);
-            setGeneratedCode(quizCode);
-            setIsPublished(true);
-            setSuccessMessage('Quiz published successfully!');
-        } catch (e) {
-            console.error("Error publishing quiz: ", e);
-            setError('Error publishing quiz. Please try again.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleCreateNewQuiz = () => {
-        setQuizTitle('');
-        setQuizDescription('');
-        setQuestions([getInitialQuestion(quizType)]);
-        setOverallTimeLimit(300);
-        setIsPublished(false);
-        setGeneratedCode('');
-        setSuccessMessage('');
-        setError('');
-    };
+    // --- Upload and Publish Logic ---
+    const uploadFile = async (file) => { const authApiUrl = `${import.meta.env.VITE_API_URL || ''}/api/auth`; const response = await fetch(authApiUrl); if (!response.ok) throw new Error("Auth server failed"); const authParams = await response.json(); return imagekit.upload({ file, fileName: `quiz-media_${Date.now()}_${file.name}`, folder: '/quiz-app-media', signature: authParams.signature, expire: authParams.expire, token: authParams.token }); };
+    const handlePublishQuiz = async () => { if (!quizTitle) { setError("Please provide a title for your quiz."); return; } if (!currentUser) { setError("You must be logged in to publish a quiz."); return; } setIsSubmitting(true); setError(''); try { let questionsToSave = JSON.parse(JSON.stringify(questions)); const uploadPromises = []; const processUploads = (questionSet, questionSetToSave) => { questionSet.forEach((q, qIndex) => { const addUpload = (file, target, prop) => { uploadPromises.push(uploadFile(file).then(r => { target[prop] = { url: r.url, fileId: r.fileId, fileType: r.fileType }; })); }; if (q.localMediaFile) addUpload(q.localMediaFile, questionSetToSave[qIndex], 'media'); if (q.mcqData) q.mcqData.options.forEach((opt, oIndex) => { if (opt.localMediaFile) addUpload(opt.localMediaFile, questionSetToSave[qIndex].mcqData.options[oIndex], 'media'); }); if (q.matchData) q.matchData.pairs.forEach((p, pIndex) => { if (p.promptLocalMediaFile) addUpload(p.promptLocalMediaFile, questionSetToSave[qIndex].matchData.pairs[pIndex], 'promptMedia'); if (p.answerLocalMediaFile) addUpload(p.answerLocalMediaFile, questionSetToSave[qIndex].matchData.pairs[pIndex], 'answerMedia'); }); if (q.categorizeData) q.categorizeData.items.forEach((item, iIndex) => { if (item.localMediaFile) addUpload(item.localMediaFile, questionSetToSave[qIndex].categorizeData.items[iIndex], 'media'); }); if (q.reorderData) q.reorderData.items.forEach((item, iIndex) => { if (item.localMediaFile) addUpload(item.localMediaFile, questionSetToSave[qIndex].reorderData.items[iIndex], 'media'); }); if (q.visualData) { if (q.visualData.localMainMediaFile) addUpload(q.visualData.localMainMediaFile, questionSetToSave[qIndex].visualData, 'mainMedia'); processUploads(q.visualData.subQuestions, questionSetToSave[qIndex].visualData.subQuestions); } if (q.listeningData) { if (q.listeningData.localMainMediaFile) addUpload(q.listeningData.localMainMediaFile, questionSetToSave[qIndex].listeningData, 'mainMedia'); processUploads(q.listeningData.subQuestions, questionSetToSave[qIndex].listeningData.subQuestions); } }); }; processUploads(questions, questionsToSave); await Promise.all(uploadPromises); const cleanup = (qs) => { qs.forEach(q => { delete q.localMediaFile; if(q.mcqData) q.mcqData.options.forEach(opt => delete opt.localMediaFile); if(q.matchData) q.matchData.pairs.forEach(p => { delete p.promptLocalMediaFile; delete p.answerLocalMediaFile; }); if(q.categorizeData) q.categorizeData.items.forEach(item => delete item.localMediaFile); if(q.reorderData) q.reorderData.items.forEach(item => delete item.localMediaFile); if(q.visualData) { delete q.visualData.localMainMediaFile; cleanup(q.visualData.subQuestions); } if(q.listeningData) { delete q.listeningData.localMainMediaFile; cleanup(q.listeningData.subQuestions); } }); }; cleanup(questionsToSave); const quizData = { title: quizTitle, description: quizDescription, code: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').sort(() => 0.5 - Math.random()).join('').slice(0, 6), quizType, createdBy: currentUser.uid, username: userDisplayName, createdAt: serverTimestamp(), active: true, questions: questionsToSave, totalPoints: questions.reduce((sum, q) => sum + (parseInt(q.points, 10) || 0), 0) }; await addDoc(collection(db, "quizzes"), quizData); setGeneratedCode(quizData.code); setIsPublished(true); } catch (e) { console.error("Error publishing:", e); setError('An error occurred. Please check console and try again.'); } finally { setIsSubmitting(false); } };
 
     if (loading) return <div className="loading-screen">Loading...</div>;
 
     return (
         <div className="create-quiz-container">
-            <button onClick={handleSignOut} className="sign-out-top-btn">Sign Out</button>
+            <input type="file" ref={hiddenFileInput} style={{ display: 'none' }} onChange={handleFileSelected} accept="image/*,video/*,audio/*" />
+            {isUploadModalOpen && (<UploadChoiceModal onChoice={handleUploadChoice} onClose={() => setIsUploadModalOpen(false)} />)}
             <div className="create-quiz-content">
-                <button onClick={() => navigate('/teacher/home')} className="back-btn"><FaArrowLeft /> Back to Dashboard</button>
-                
                 {!isPublished ? (
                     <>
-                        <div className="quiz-form-section">
-                            <div className="section-header"><h2>1. Quiz Details</h2></div>
-                            <div className="form-group">
-                                <label htmlFor="quiz-title">Quiz Title</label>
-                                <input id="quiz-title" type="text" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} placeholder="e.g., Chapter 5: Photosynthesis" className="form-control" />
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="quiz-description">Description (Optional)</label>
-                                <textarea id="quiz-description" value={quizDescription} onChange={(e) => setQuizDescription(e.target.value)} placeholder="A brief summary of the quiz content" className="form-control" rows="3" />
-                            </div>
-                            <div className="form-group">
-                                <label htmlFor="overall-time-limit">Overall Time Limit (seconds)</label>
-                                <input id="overall-time-limit" type="number" value={overallTimeLimit} onChange={(e) => setOverallTimeLimit(e.target.value)} onBlur={(e) => setOverallTimeLimit(Math.max(10, parseInt(e.target.value, 10) || 10))} className="form-control" />
-                            </div>
-                        </div>
-                        
+                        <div className="create-quiz-header"><button onClick={() => navigate('/teacher/home')} className="back-btn"><FaArrowLeft /> Dashboard</button><h2>Create New Quiz</h2><button onClick={handlePublishQuiz} className="publish-quiz-btn" disabled={isSubmitting}><FaSave /> {isSubmitting ? 'Publishing...' : 'Publish'}</button></div>
+                        {error && <div className="error-message"><FaTimes/> {error}</div>}
+                        <div className="quiz-form-section"><h3>1. Quiz Details</h3><div className="form-group"><label>Quiz Title</label><input type="text" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} placeholder="e.g., Chapter 5: Photosynthesis" className="form-control" /></div><div className="form-group"><label>Description</label><textarea value={quizDescription} onChange={(e) => setQuizDescription(e.target.value)} placeholder="A brief summary for your students" className="form-control" rows="3" /></div></div>
                         <div className="quiz-questions-section">
-                            <div className="section-header"><h2>2. Questions ({quizType.replace(/_/g, ' ')})</h2></div>
+                            <h3>2. Questions</h3>
                             {questions.map((q, qIndex) => (
-                                <div key={qIndex} className="question-card">
-                                    <div className="question-header">
-                                        <h3>Question {qIndex + 1}</h3>
-                                        <div className="question-controls">
-                                            {quizType === 'MIXED' && (
-                                                <select value={q.type} onChange={(e) => handleQuestionTypeChange(qIndex, e.target.value)} className="question-type-select">
-                                                    <option value="MCQ">Multiple Choice</option>
-                                                    <option value="FILL_IN_THE_BLANK">Fill in the Blank</option>
-                                                    <option value="PARAGRAPH">Paragraph</option>
-                                                    <option value="MATCH_THE_FOLLOWING">Match the Following</option>
-                                                    <option value="CATEGORIZE">Categorize</option>
-                                                    <option value="REORDER">Reorder</option>
-                                                    <option value="READING_COMPREHENSION">Reading Comprehension</option>
-                                                </select>
-                                            )}
-                                            <button onClick={() => handleRemoveQuestion(qIndex)} className="remove-question-btn" type="button" disabled={questions.length === 1}><FaTrashAlt /></button>
-                                        </div>
-                                    </div>
-                                    <div className="form-group">
-                                        <label htmlFor={`question-text-${qIndex}`}>Question Text / Instruction</label>
-                                        <input id={`question-text-${qIndex}`} type="text" value={q.text} onChange={(e) => handleQuestionFieldChange(qIndex, 'text', e.target.value)} placeholder="e.g., Match the capitals to their countries." className="form-control" />
-                                        {q.type === 'FILL_IN_THE_BLANK' && <small className="input-instruction">Use underscores <code>___</code> to show students where the blank is.</small>}
-                                    </div>
-                                    <div className="question-body">
-                                        <div className="form-group points-group">
-                                            <label htmlFor={`question-points-${qIndex}`}>Points</label>
-                                            <input id={`question-points-${qIndex}`} type="number" value={q.points} onChange={(e) => handleQuestionFieldChange(qIndex, 'points', e.target.value)} onBlur={(e) => handleQuestionFieldChange(qIndex, 'points', Math.max(1, parseInt(e.target.value, 10) || 1))} className="form-control points-input" disabled={q.type === 'READING_COMPREHENSION'}/>
-                                            {q.type === 'READING_COMPREHENSION' && <small className="input-instruction">Total points are auto-calculated from sub-questions.</small>}
-                                        </div>
-
-                                        {q.type === 'MCQ' && (
-                                            <div className="options-container slide-down">
-                                                <h4>Options (Mark the correct one)</h4>
-                                                {q.options.map((opt, oIndex) => (
-                                                    <div key={oIndex} className="option-item">
-                                                        <input id={`correct-option-${qIndex}-${oIndex}`} type="radio" name={`correct-option-${qIndex}`} checked={q.correctOption === oIndex} onChange={() => handleQuestionFieldChange(qIndex, 'correctOption', oIndex)} className="form-check-input" />
-                                                        <input type="text" value={opt} onChange={(e) => handleOptionChange(qIndex, oIndex, e.target.value)} placeholder={`Option ${oIndex + 1}`} className="form-control" />
-                                                    </div>
-                                                ))}
+                                <div key={q.id} className="question-card">
+                                    <div className="question-header"><h4>Question {qIndex + 1}</h4><div className="question-controls">{quizType === 'MIXED' && (<select value={q.type} onChange={(e) => handleQuestionTypeChange(qIndex, e.target.value)} className="question-type-select"><option value="MCQ">Multiple Choice</option><option value="FILL_IN_THE_BLANK">Fill in the Blank</option><option value="PARAGRAPH">Paragraph</option><option value="MATCH_THE_FOLLOWING">Match the Following</option><option value="CATEGORIZE">Categorize</option><option value="REORDER">Reorder</option><option value="VISUAL_COMPREHENSION">Visual Comprehension</option><option value="LISTENING_COMPREHENSION">Listening Comprehension</option></select>)}<button onClick={() => handleRemoveQuestion(qIndex)} className="remove-item-btn" type="button" disabled={questions.length === 1}><FaTrashAlt /></button></div></div>
+                                    {(q.type === 'VISUAL_COMPREHENSION' || q.type === 'LISTENING_COMPREHENSION') ? (
+                                      <div className="comprehension-container">
+                                        <h4>Main Media</h4><p className="input-instruction">Upload the {q.type === 'VISUAL_COMPREHENSION' ? 'video' : 'audio or video'} students will be tested on.</p>
+                                        <div className="main-media-controls full-width">{(q.visualData?.mainMedia || q.visualData?.localMainMediaFile || q.listeningData?.mainMedia || q.listeningData?.localMainMediaFile) ? <MediaPreview file={q.visualData?.mainMedia || q.visualData?.localMainMediaFile || q.listeningData?.mainMedia || q.listeningData.localMainMediaFile} onRemove={() => handleRemoveMedia(qIndex, q.type === 'VISUAL_COMPREHENSION' ? 'visualMainMedia' : 'listeningMainMedia')} /> : <button type="button" className="add-media-btn" onClick={() => openUploadModal({ qIndex, field: q.type === 'VISUAL_COMPREHENSION' ? 'visualMainMedia' : 'listeningMainMedia' })}><FaPhotoVideo/> Add Media</button>}</div>
+                                        <h4 style={{marginTop: '1.5rem'}}>Follow-up Questions</h4>
+                                        {(q.visualData?.subQuestions || q.listeningData?.subQuestions).map((subQ, subQIndex) => (<div key={subQ.id} className="sub-question-card"><div className="sub-question-header"><h5>Question {subQIndex + 1} ({subQ.type})</h5><button className="remove-item-btn" onClick={() => handleRemoveSubQuestion(qIndex, q.type === 'VISUAL_COMPREHENSION' ? 'visualData' : 'listeningData', subQIndex)}><FaTimes/></button></div><input type="text" value={subQ.questionText} onChange={(e) => handleSubQuestionChange(qIndex, q.type === 'VISUAL_COMPREHENSION' ? 'visualData' : 'listeningData', subQIndex, 'questionText', e.target.value)} className="form-control" placeholder="Sub-question text"/>{subQ.type === 'MCQ' && subQ.mcqData && <div className="options-container" style={{paddingTop: '1rem'}}>{subQ.mcqData.options.map((opt, oIndex) => (<div key={opt.id} className="option-item"><input type="checkbox" className="form-check-input" checked={subQ.mcqData.correctOptions.includes(opt.id)} onChange={() => handleSubMCQCorrectToggle(qIndex, q.type === 'VISUAL_COMPREHENSION' ? 'visualData' : 'listeningData', subQIndex, oIndex)} /><input type="text" value={opt.text} onChange={(e) => handleSubMCQOptionChange(qIndex, q.type === 'VISUAL_COMPREHENSION' ? 'visualData' : 'listeningData', subQIndex, oIndex, e.target.value)} placeholder={`Option ${oIndex + 1}`} className="form-control" /></div>))}</div>}</div>))}
+                                        <div className="sub-question-add-buttons"><button type="button" className="add-item-btn" onClick={() => handleAddSubQuestion(qIndex, q.type === 'VISUAL_COMPREHENSION' ? 'visualData' : 'listeningData', 'MCQ')}><FaPlus/> Add MCQ</button></div>
+                                      </div>
+                                    ) : (
+                                        <>
+                                            <div className="question-main-content">
+                                                <div className="question-text-and-media"><textarea value={q.questionText} onChange={(e) => handleQuestionChange(qIndex, 'questionText', e.target.value)} placeholder="Type your question or instruction here..." className="form-control question-textarea"/>{['MCQ', 'FILL_IN_THE_BLANK', 'PARAGRAPH', 'REORDER'].includes(q.type) && (<div className="main-media-controls">{(q.media || q.localMediaFile) ? (<MediaPreview file={q.media || q.localMediaFile} onRemove={() => handleRemoveMedia(qIndex, 'questionMedia')} />) : (<button type="button" className="add-media-btn" onClick={() => openUploadModal({ qIndex, field: 'questionMedia' })}><FaPhotoVideo/> Add Media</button>)}</div>)}</div>
+                                                <div className="question-settings"><div className="form-group"><label>Points</label><input type="number" value={q.points} onChange={(e) => handleQuestionChange(qIndex, 'points', e.target.value)} className="form-control points-input"/></div><div className="form-group"><label>Time (sec)</label><input type="number" value={q.timeLimit} onChange={(e) => handleQuestionChange(qIndex, 'timeLimit', e.target.value)} className="form-control points-input"/></div></div>
                                             </div>
-                                        )}
-                                        {q.type === 'FILL_IN_THE_BLANK' && (
-                                            <div className="fill-blank-container slide-down">
-                                                <div className="form-group">
-                                                    <label htmlFor={`fill-answers-${qIndex}`}>Acceptable Answers (comma-separated)</label>
-                                                    <input id={`fill-answers-${qIndex}`} type="text" value={q.answers.join(',')} onChange={(e) => handleCommaSeparatedChange(qIndex, 'answers', e.target.value)} placeholder="e.g., mitochondria,Mitochondria" className="form-control"/>
-                                                </div>
-                                                <div className="form-check-inline">
-                                                    <input id={`case-sensitive-${qIndex}`} type="checkbox" checked={q.caseSensitive} onChange={(e) => handleQuestionFieldChange(qIndex, 'caseSensitive', e.target.checked)} />
-                                                    <label htmlFor={`case-sensitive-${qIndex}`}>Answers are case-sensitive</label>
-                                                </div>
+                                            <div className="question-body">
+                                                {q.type === 'MCQ' && q.mcqData && <div className="options-container"><h4>Options (Check all correct answers)</h4>{q.mcqData.options.map((opt, oIndex) => (<div key={opt.id} className="option-item"><input type="checkbox" className="form-check-input" checked={q.mcqData.correctOptions.includes(opt.id)} onChange={() => handleMCQCorrectToggle(qIndex, oIndex)} /><input type="text" value={opt.text} onChange={(e) => handleMCQOptionChange(qIndex, oIndex, e.target.value)} placeholder={`Option ${oIndex + 1}`} className="form-control" />{(opt.media || opt.localMediaFile) ? (<MediaPreview file={opt.media || opt.localMediaFile} onRemove={() => handleRemoveMedia(qIndex, 'mcqOptionMedia', oIndex)} />) : (<button type="button" className="add-media-btn-small" onClick={() => openUploadModal({ qIndex, field: 'mcqOptionMedia', oIndex })}><FaPhotoVideo/></button>)}<button className="remove-item-btn" onClick={() => handleRemoveMCQOption(qIndex, oIndex)} disabled={q.mcqData.options.length <= 2}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddMCQOption(qIndex)}><FaPlus/> Add Option</button></div>}
+                                                {q.type === 'FILL_IN_THE_BLANK' && q.fillBlankData && <div className="options-container"><h4>Accepted Answers (Case Insensitive)</h4>{q.fillBlankData.answers.map((ans, ansIndex) => (<div key={ansIndex} className="option-item"><input type="text" value={ans.text} onChange={(e) => handleFillBlankAnswerChange(qIndex, ansIndex, e.target.value)} placeholder="Accepted answer" className="form-control" /><button className="remove-item-btn" onClick={() => handleRemoveFillBlankAnswer(qIndex, ansIndex)} disabled={q.fillBlankData.answers.length <= 1}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddFillBlankAnswer(qIndex)}><FaPlus/> Add Answer</button></div>}
+                                                {q.type === 'PARAGRAPH' && q.paragraphData && <div className="options-container"><h4>Grading Keywords (Optional)</h4><p className="input-instruction">Provide keywords to help with grading. These are not shown to students.</p>{q.paragraphData.keywords.map((key, keyIndex) => (<div key={keyIndex} className="option-item"><input type="text" value={key.text} onChange={(e) => handleParagraphKeywordChange(qIndex, keyIndex, e.target.value)} placeholder="Keyword for grading" className="form-control" /><button className="remove-item-btn" onClick={() => handleRemoveParagraphKeyword(qIndex, keyIndex)}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddParagraphKeyword(qIndex)}><FaPlus/> Add Keyword</button></div>}
+                                                {q.type === 'MATCH_THE_FOLLOWING' && q.matchData && <div className="match-following-container"><h4>Matching Pairs</h4>{q.matchData.pairs.map((pair, pIndex) => (<div key={pair.id} className="match-pair-item"><FaGripLines/><div className="match-column">{(pair.promptMedia || pair.promptLocalMediaFile) ? <MediaPreview file={pair.promptMedia || pair.promptLocalMediaFile} onRemove={() => handleRemoveMedia(qIndex, 'matchPromptMedia', null, pIndex)}/> : <button className="add-media-btn-small" onClick={() => openUploadModal({ qIndex, field: 'matchPromptMedia', pairIndex: pIndex})}><FaPhotoVideo/></button>}<input type="text" value={pair.prompt} onChange={e => handleMatchPairChange(qIndex, pIndex, 'prompt', e.target.value)} placeholder="Prompt" className="form-control"/></div><div className="match-column">{(pair.answerMedia || pair.answerLocalMediaFile) ? <MediaPreview file={pair.answerMedia || pair.answerLocalMediaFile} onRemove={() => handleRemoveMedia(qIndex, 'matchAnswerMedia', null, pIndex)}/> : <button className="add-media-btn-small" onClick={() => openUploadModal({ qIndex, field: 'matchAnswerMedia', pairIndex: pIndex})}><FaPhotoVideo/></button>}<input type="text" value={pair.answer} onChange={e => handleMatchPairChange(qIndex, pIndex, 'answer', e.target.value)} placeholder="Answer" className="form-control"/></div><button type="button" className="remove-item-btn" onClick={() => handleRemoveMatchPair(qIndex, pIndex)} disabled={q.matchData.pairs.length <= 1}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddMatchPair(qIndex)}><FaPlus/> Add Pair</button></div>}
+                                                {q.type === 'CATEGORIZE' && q.categorizeData && <div className="categorize-container"><h4>Categories</h4>{q.categorizeData.categories.map((cat, cIndex) => (<div key={cat.id} className="option-item"><input type="text" value={cat.name} onChange={e => handleCategoryNameChange(qIndex, cIndex, e.target.value)} className="form-control"/><button type="button" className="remove-item-btn" onClick={() => handleRemoveCategory(qIndex, cIndex)} disabled={q.categorizeData.categories.length <= 1}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddCategory(qIndex)}><FaPlus/> Add Category</button><h4 style={{marginTop: '1.5rem'}}>Items to Categorize</h4>{q.categorizeData.items.map((item, iIndex) => (<div key={item.id} className="categorize-item-row"><div className="match-column">{(item.media || item.localMediaFile) ? <MediaPreview file={item.media || item.localMediaFile} onRemove={() => handleRemoveMedia(qIndex, 'categorizeItemMedia', null, null, iIndex)}/> : <button className="add-media-btn-small" onClick={() => openUploadModal({ qIndex, field: 'categorizeItemMedia', itemIndex: iIndex})}><FaPhotoVideo/></button>}<input type="text" value={item.text} onChange={e => handleCategorizeItemChange(qIndex, iIndex, 'text', e.target.value)} placeholder="Item" className="form-control"/></div><select value={item.categoryId || ''} onChange={e => handleCategorizeItemChange(qIndex, iIndex, 'categoryId', Number(e.target.value))} className="form-control category-select"><option value="" disabled>Select Category</option>{q.categorizeData.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><button type="button" className="remove-item-btn" onClick={() => handleRemoveCategorizeItem(qIndex, iIndex)} disabled={q.categorizeData.items.length <= 1}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddCategorizeItem(qIndex)}><FaPlus/> Add Item</button></div>}
+                                                {q.type === 'REORDER' && q.reorderData && <div className="reorder-container"><h4>Items to Reorder (in correct order)</h4>{q.reorderData.items.map((item, iIndex) => (<div key={item.id} className="reorder-item-row"><span className="reorder-number">{iIndex+1}.</span><div className="match-column">{(item.media || item.localMediaFile) ? <MediaPreview file={item.media || item.localMediaFile} onRemove={() => handleRemoveMedia(qIndex, 'reorderItemMedia', null, null, iIndex)}/> : <button className="add-media-btn-small" onClick={() => openUploadModal({ qIndex, field: 'reorderItemMedia', itemIndex: iIndex})}><FaPhotoVideo/></button>}<input type="text" value={item.text} onChange={e => handleReorderItemChange(qIndex, iIndex, e.target.value)} placeholder="Item text" className="form-control"/></div><button type="button" className="remove-item-btn" onClick={() => handleRemoveReorderItem(qIndex, iIndex)} disabled={q.reorderData.items.length <= 1}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddReorderItem(qIndex)}><FaPlus/> Add Item</button></div>}
                                             </div>
-                                        )}
-                                        {q.type === 'PARAGRAPH' && (
-                                            <div className="paragraph-container slide-down">
-                                                <div className="form-group">
-                                                    <label htmlFor={`keywords-${qIndex}`}>Grading Keywords (Optional)</label>
-                                                    <input id={`keywords-${qIndex}`} type="text" value={q.gradingKeywords.join(',')} onChange={(e) => handleCommaSeparatedChange(qIndex, 'gradingKeywords', e.target.value)} placeholder="e.g., sunlight, chlorophyll, oxygen" className="form-control" />
-                                                    <small className="input-instruction">These keywords will be shown to you during grading.</small>
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {/* --- NEW: JSX for New Question Types --- */}
-
-                                        {q.type === 'MATCH_THE_FOLLOWING' && (
-                                            <div className="match-following-container slide-down">
-                                                <h4>Pairs (Prompt on left, Correct Match on right)</h4>
-                                                {q.pairs.map((pair, pairIndex) => (
-                                                    <div key={pairIndex} className="match-pair-item">
-                                                        <input type="text" value={pair.prompt} onChange={e => handleMatchPairChange(qIndex, pairIndex, 'prompt', e.target.value)} placeholder={`Prompt ${pairIndex + 1}`} className="form-control" />
-                                                        <FaGripLines />
-                                                        <input type="text" value={pair.option} onChange={e => handleMatchPairChange(qIndex, pairIndex, 'option', e.target.value)} placeholder={`Matching Option ${pairIndex + 1}`} className="form-control" />
-                                                        <button onClick={() => handleRemoveMatchPair(qIndex, pairIndex)} className="remove-item-btn" type="button" disabled={q.pairs.length <= 1}><FaTrashAlt /></button>
-                                                    </div>
-                                                ))}
-                                                <button onClick={() => handleAddMatchPair(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Pair</button>
-                                            </div>
-                                        )}
-
-                                        {q.type === 'CATEGORIZE' && (
-                                            <div className="categorize-container slide-down">
-                                                <div className="form-group">
-                                                    <label>Categories (comma-separated)</label>
-                                                    <input type="text" value={q.categories.join(',')} onChange={e => handleQuestionFieldChange(qIndex, 'categories', e.target.value.split(',').map(c => c.trim()))} placeholder="e.g., Fruit, Vegetable, Grain" className="form-control" />
-                                                </div>
-                                                <h4>Items to Categorize</h4>
-                                                {q.items.map((item, itemIndex) => (
-                                                    <div key={itemIndex} className="categorize-item-row">
-                                                        <input type="text" value={item.text} onChange={e => handleCategorizeItemChange(qIndex, itemIndex, 'text', e.target.value)} placeholder={`Item ${itemIndex + 1}`} className="form-control" />
-                                                        <select value={item.category} onChange={e => handleCategorizeItemChange(qIndex, itemIndex, 'category', e.target.value)} className="form-control category-select" disabled={q.categories.length === 0}>
-                                                            <option value="">Select Category</option>
-                                                            {q.categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                                        </select>
-                                                        <button onClick={() => handleRemoveCategorizeItem(qIndex, itemIndex)} className="remove-item-btn" type="button" disabled={q.items.length <= 1}><FaTrashAlt /></button>
-                                                    </div>
-                                                ))}
-                                                <button onClick={() => handleAddCategorizeItem(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Item</button>
-                                            </div>
-                                        )}
-
-                                        {q.type === 'REORDER' && (
-                                            <div className="reorder-container slide-down">
-                                                <h4>Items (Enter in the correct order)</h4>
-                                                {q.items.map((item, itemIndex) => (
-                                                    <div key={itemIndex} className="reorder-item-row">
-                                                         <span className="reorder-number">{itemIndex + 1}.</span>
-                                                         <input type="text" value={item} onChange={e => handleReorderItemChange(qIndex, itemIndex, e.target.value)} placeholder={`Item in position ${itemIndex + 1}`} className="form-control" />
-                                                         <button onClick={() => handleRemoveReorderItem(qIndex, itemIndex)} className="remove-item-btn" type="button" disabled={q.items.length <= 2}><FaTrashAlt /></button>
-                                                    </div>
-                                                ))}
-                                                <button onClick={() => handleAddReorderItem(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Item</button>
-                                            </div>
-                                        )}
-
-                                        {q.type === 'READING_COMPREHENSION' && (
-                                            <div className="comprehension-container slide-down">
-                                                <div className="form-group">
-                                                    <label>Passage</label>
-                                                    <textarea value={q.passage} onChange={e => handleQuestionFieldChange(qIndex, 'passage', e.target.value)} rows="8" placeholder="Enter the reading passage here..." className="form-control passage-textarea"></textarea>
-                                                </div>
-                                                <h4>Follow-up Questions</h4>
-                                                {q.subQuestions.map((sq, sqIndex) => (
-                                                    <div key={sqIndex} className="sub-question-card">
-                                                        <div className="sub-question-header">
-                                                          <h5>Question {sqIndex + 1} (MCQ)</h5>
-                                                          <button onClick={() => handleRemoveSubQuestion(qIndex, sqIndex)} className="remove-item-btn" type="button"><FaTrashAlt/></button>
-                                                        </div>
-                                                        <input type="text" value={sq.text} onChange={e => handleSubQuestionChange(qIndex, sqIndex, 'text', e.target.value)} placeholder="Sub-question text" className="form-control"/>
-                                                        {sq.options.map((opt, optIndex) => (
-                                                            <div key={optIndex} className="sub-question-option">
-                                                                <input type="radio" name={`sub-q-${qIndex}-${sqIndex}`} checked={sq.correctOption === optIndex} onChange={() => handleSubQuestionChange(qIndex, sqIndex, 'correctOption', optIndex)} />
-                                                                <input type="text" value={opt} onChange={e => handleSubQuestionOptionChange(qIndex, sqIndex, optIndex, e.target.value)} placeholder={`Option ${optIndex + 1}`} className="form-control"/>
-                                                            </div>
-                                                        ))}
-                                                        <div className="form-group points-group sub-points">
-                                                            <label>Points</label>
-                                                            <input type="number" value={sq.points} onChange={e => handleSubQuestionChange(qIndex, sqIndex, 'points', e.target.value)} className="form-control points-input"/>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                <button onClick={() => handleAddSubQuestion(qIndex)} className="add-item-btn" type="button"><FaPlus /> Add Sub-Question</button>
-                                            </div>
-                                        )}
-
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
                             ))}
-                            <button onClick={handleAddQuestion} className="add-question-btn" type="button"><FaPlus /> Add Another Question</button>
+                            <button onClick={handleAddQuestion} className="add-question-btn" type="button"><FaPlus /> Add Question</button>
                         </div>
-                        {error && <div className="error-message"><FaTimes /> {error}</div>}
-                        <div className="form-actions"><button onClick={handlePublishQuiz} className="publish-quiz-btn" type="button" disabled={isSubmitting}>{isSubmitting ? 'Publishing...' : 'Publish Quiz'}</button></div>
                     </>
                 ) : (
-                    <div className="quiz-published-section">
-                        <div className="success-message">{successMessage}</div>
-                        <div className="quiz-code-container">
-                            <h2>Your Quiz Code</h2>
-                            <div className="quiz-code">{generatedCode}</div>
-                            <p>Share this code with students for them to join.</p>
-                            <button onClick={() => { navigator.clipboard.writeText(generatedCode); setSuccessMessage('Code Copied!'); setTimeout(() => setSuccessMessage('Quiz published successfully!'), 2000); }} className="copy-code-btn" type="button">
-                                <FaClipboard /> Copy Code
-                            </button>
-                        </div>
-                        <button onClick={handleCreateNewQuiz} className="new-quiz-btn" type="button">Create Another Quiz</button>
-                    </div>
+                    <div className="quiz-published-section"><h2>Quiz Published!</h2><p>Share this code with your students:</p><div className="quiz-code">{generatedCode}</div><button onClick={() => navigator.clipboard.writeText(generatedCode)}><FaClipboard/> Copy Code</button><button onClick={() => navigate('/teacher/home')}>Back to Dashboard</button></div>
                 )}
             </div>
         </div>

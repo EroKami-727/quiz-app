@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getAuth, signOut } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import '../../styles/Student/TakeQuiz.css';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import MediaRenderer from '../../components/MediaRenderer';
+import { FaGripLines, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 
-// Helper to shuffle an array
+// Helper to shuffle an array immutably
 const shuffleArray = (array) => {
     if (!array || !Array.isArray(array)) return [];
     return [...array].sort(() => Math.random() - 0.5);
 };
+
 
 const TakeQuiz = () => {
     const { quizId } = useParams();
@@ -18,498 +21,154 @@ const TakeQuiz = () => {
     const auth = getAuth();
     const user = auth.currentUser;
 
+    // --- State Management ---
     const [quiz, setQuiz] = useState(null);
-    const [userName, setUserName] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [selectedAnswers, setSelectedAnswers] = useState([]);
+    const [answers, setAnswers] = useState([]);
+    const [timeSpent, setTimeSpent] = useState([]);
     const [quizStarted, setQuizStarted] = useState(false);
     const [quizSubmitted, setQuizSubmitted] = useState(false);
     const [finalResults, setFinalResults] = useState(null);
     const [timeLeft, setTimeLeft] = useState(null);
-    
-    // --- FIX: State to hold shuffled options persistently for the quiz session ---
-    const [shuffledQuestionOptions, setShuffledQuestionOptions] = useState({});
+    const timerRef = useRef(null);
+    const questionStartTimeRef = useRef(null);
 
-    // Fetch Quiz Data
+    // Fetch Quiz and Initialize Answer State
     useEffect(() => {
-        const fetchQuiz = async () => {
+        const fetchQuizAndInit = async () => {
+            if (!quizId) { setError("No Quiz ID provided."); setLoading(false); return; }
             setLoading(true);
             try {
                 const quizDocRef = doc(db, "quizzes", quizId);
                 const quizDocSnap = await getDoc(quizDocRef);
-
                 if (quizDocSnap.exists()) {
                     const quizData = quizDocSnap.data();
                     setQuiz(quizData);
-                    
-                    // --- FIX: Initialize shuffled lists for relevant questions ---
-                    const shufflers = {};
-                    (quizData.questions || []).forEach((q, index) => {
-                        if (q.type === 'MATCH_THE_FOLLOWING') {
-                            shufflers[index] = shuffleArray(q.options);
-                        }
-                    });
-                    setShuffledQuestionOptions(shufflers);
-
                     const initialAnswers = (quizData.questions || []).map(q => {
-                        switch(q.type) {
-                            case 'MATCH_THE_FOLLOWING': return {};
-                            case 'REORDER': return shuffleArray(q.items ?? []);
-                            case 'CATEGORIZE': 
-                                return {
-                                    ...Object.fromEntries((q.categories ?? []).map(cat => [cat, []])),
-                                    bank: shuffleArray((q.items ?? []).map(item => item.text))
-                                };
-                            case 'READING_COMPREHENSION': return new Array(q.subQuestions?.length ?? 0).fill('');
-                            default: return '';
-                        }
+                        try {
+                            switch(q.type) {
+                                case 'MCQ': return [];
+                                case 'FILL_IN_THE_BLANK': return '';
+                                case 'PARAGRAPH': return '';
+                                case 'MATCH_THE_FOLLOWING': const answerBank = (q.matchData?.pairs || []).map(p => ({ id: p.id, answerText: p.answer, answerMedia: p.answerMedia })); return { pairs: {}, bank: shuffleArray(answerBank) };
+                                case 'REORDER': return shuffleArray(q.reorderData?.items || []);
+                                case 'CATEGORIZE': return { ...Object.fromEntries((q.categorizeData?.categories || []).map(cat => [cat.id, []])), bank: shuffleArray(q.categorizeData?.items || []) };
+                                case 'VISUAL_COMPREHENSION': case 'LISTENING_COMPREHENSION': const subQs = q.visualData?.subQuestions || q.listeningData?.subQuestions || []; return subQs.map(subQ => subQ.type === 'MCQ' ? [] : '');
+                                default: return null;
+                            }
+                        } catch (e) { console.error(`Error initializing answer state for question type ${q.type}:`, e); return null; }
                     });
-                    setSelectedAnswers(initialAnswers);
-                    
-                    if (quizData.overallTimeLimit) setTimeLeft(quizData.overallTimeLimit);
-                } else {
-                    setError('Quiz not found. It might have been deleted or the link is incorrect.');
-                }
-            } catch (err) {
-                console.error("Error fetching quiz:", err);
-                setError('Failed to load quiz. The data might be corrupted.');
-            } finally {
-                setLoading(false);
-            }
+                    setAnswers(initialAnswers);
+                    setTimeSpent(new Array((quizData.questions || []).length).fill(0));
+                } else { setError('Quiz not found.'); }
+            } catch (err) { console.error("Error fetching quiz:", err); setError('Failed to load quiz.'); } 
+            finally { setLoading(false); }
         };
-        if (quizId) fetchQuiz();
+        fetchQuizAndInit();
     }, [quizId]);
 
-    // Fetch User Data
+    // Timer Logic
     useEffect(() => {
-        const fetchUserData = async () => {
-            if (user) {
-                try {
-                    const userDocRef = doc(db, "users", user.uid);
-                    const userDocSnap = await getDoc(userDocRef);
-                    setUserName(userDocSnap.exists() ? userDocSnap.data().displayName || user.email : user.email);
-                } catch (err) {
-                    console.error("Error fetching user data:", err);
-                    setUserName(user.email);
-                }
-            }
-        };
-        fetchUserData();
-    }, [user]);
-
-    // Timer logic
-    useEffect(() => {
-        if (!quizStarted || quizSubmitted || !quiz || timeLeft === null) return;
-        if (timeLeft > 0) {
-            const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-            return () => clearTimeout(timer);
-        } else if (timeLeft === 0) {
-            handleSubmitQuiz();
-        }
-    }, [quizStarted, quizSubmitted, timeLeft, quiz]);
-
-    const handleSignOut = () => signOut(auth).then(() => navigate('/student/login')).catch(console.error);
-    const handleStartQuiz = () => setQuizStarted(true);
-
-    const handleAnswerChange = (value, subIndex = null) => {
-        const newAnswers = [...selectedAnswers];
-        if (subIndex !== null && Array.isArray(newAnswers[currentQuestionIndex])) {
-            newAnswers[currentQuestionIndex][subIndex] = value;
-        } else {
-            newAnswers[currentQuestionIndex] = value;
-        }
-        setSelectedAnswers(newAnswers);
-    };
-
-    const handleDragEnd = (result) => {
-        const { source, destination, draggableId } = result;
-        if (!destination) return;
-
+        if (!quizStarted || quizSubmitted || !quiz || currentQuestionIndex >= quiz.questions.length) return;
         const currentQuestion = quiz.questions[currentQuestionIndex];
-        const newAnswers = [...selectedAnswers];
-        let currentAnswer = newAnswers[currentQuestionIndex];
+        const timeLimit = parseInt(currentQuestion.timeLimit, 10) || 60;
+        questionStartTimeRef.current = Date.now();
+        if(timerRef.current) clearInterval(timerRef.current);
+        setTimeLeft(timeLimit);
+        timerRef.current = setInterval(() => { setTimeLeft(prevTime => { if (prevTime <= 1) { clearInterval(timerRef.current); handleNextQuestion(); return 0; } return prevTime - 1; }); }, 1000);
+        return () => clearInterval(timerRef.current);
+    }, [currentQuestionIndex, quizStarted, quizSubmitted, quiz]);
 
-        if (currentQuestion.type === 'REORDER') {
-            const reorderedItems = Array.from(currentAnswer);
-            const [removed] = reorderedItems.splice(source.index, 1);
-            reorderedItems.splice(destination.index, 0, removed);
-            newAnswers[currentQuestionIndex] = reorderedItems;
-        }
-
-        if (currentQuestion.type === 'CATEGORIZE') {
-            const newBoardState = { ...currentAnswer };
-            const sourceColumn = newBoardState[source.droppableId];
-            const destColumn = newBoardState[destination.droppableId];
-            if(source.droppableId === destination.droppableId) {
-                const newItems = Array.from(sourceColumn);
-                const [removed] = newItems.splice(source.index, 1);
-                newItems.splice(destination.index, 0, removed);
-                newBoardState[source.droppableId] = newItems;
-            } else {
-                const newSourceItems = Array.from(sourceColumn);
-                const newDestItems = Array.from(destColumn);
-                const [removed] = newSourceItems.splice(source.index, 1);
-                newDestItems.splice(destination.index, 0, removed);
-                newBoardState[source.droppableId] = newSourceItems;
-                newBoardState[destination.droppableId] = newDestItems;
-            }
+    const recordTimeSpent = () => { const endTime = Date.now(); const startTime = questionStartTimeRef.current; const spent = startTime ? (endTime - startTime) / 1000 : 0; const newTimeSpent = [...timeSpent]; newTimeSpent[currentQuestionIndex] = spent; setTimeSpent(newTimeSpent); };
+    const handleAnswerChange = (value, subIndex = null) => {
+        const newAnswers = [...answers]; const question = quiz.questions[currentQuestionIndex]; const currentAnswer = newAnswers[currentQuestionIndex];
+        if (question.type.includes('COMPREHENSION')) {
+            const dataKey = question.visualData ? 'visualData' : 'listeningData';
+            if(question[dataKey].subQuestions[subIndex].type === 'MCQ') { const currentSelection = currentAnswer[subIndex] || []; const newSelection = currentSelection.includes(value) ? currentSelection.filter(id => id !== value) : [...currentSelection, value]; currentAnswer[subIndex] = newSelection; } else { currentAnswer[subIndex] = value; }
+        } else if (question.type === 'MCQ') { const currentSelection = currentAnswer || []; const newSelection = currentSelection.includes(value) ? currentSelection.filter(id => id !== value) : [...currentSelection, value]; newAnswers[currentQuestionIndex] = newSelection;
+        } else { newAnswers[currentQuestionIndex] = value; }
+        setAnswers(newAnswers);
+    };
+    const handleDragEnd = (result) => {
+        const { source, destination } = result; if (!destination) return;
+        const q = quiz.questions[currentQuestionIndex]; const newAnswers = [...answers]; let currentAnswer = newAnswers[currentQuestionIndex];
+        if (q.type === 'REORDER') { const reorderedItems = Array.from(currentAnswer); const [removed] = reorderedItems.splice(source.index, 1); reorderedItems.splice(destination.index, 0, removed); newAnswers[currentQuestionIndex] = reorderedItems; }
+        if (q.type === 'CATEGORIZE' || q.type === 'MATCH_THE_FOLLOWING') {
+            const sourceColId = source.droppableId; const destColId = destination.droppableId; const newBoardState = { ...currentAnswer }; const sourceCol = Array.from(newBoardState[sourceColId]); const [movedItem] = sourceCol.splice(source.index, 1);
+            if (sourceColId === destColId) { sourceCol.splice(destination.index, 0, movedItem); newBoardState[sourceColId] = sourceCol; } else { const destCol = Array.from(newBoardState[destColId] || []); destCol.splice(destination.index, 0, movedItem); newBoardState[sourceColId] = sourceCol; newBoardState[destColId] = destCol; }
             newAnswers[currentQuestionIndex] = newBoardState;
         }
-        
-        // --- FIX: Logic to prevent `undefined` values from being set ---
-        if (currentQuestion.type === 'MATCH_THE_FOLLOWING') {
-            const newMatchState = { ...currentAnswer };
-            const sourceId = source.droppableId;
-            const destId = destination.droppableId;
-            if (sourceId === destId) return;
-
-            const sourcePrompt = sourceId.startsWith('prompt-') ? sourceId.replace('prompt-', '') : null;
-            const destPrompt = destId.startsWith('prompt-') ? destId.replace('prompt-', '') : null;
-            const itemInDest = destPrompt ? newMatchState[destPrompt] : undefined;
-
-            // Remove from old location
-            if (sourcePrompt) {
-                delete newMatchState[sourcePrompt];
-            }
-            // Add to new location
-            if (destPrompt) {
-                newMatchState[destPrompt] = draggableId;
-            }
-            // If an item was swapped out, put it where the dragged item came from
-            if (itemInDest && sourcePrompt) {
-                 newMatchState[sourcePrompt] = itemInDest;
-            }
-            
-            newAnswers[currentQuestionIndex] = newMatchState;
-        }
-
-        setSelectedAnswers(newAnswers);
+        setAnswers(newAnswers);
     };
-
-    const handleNextQuestion = () => {
-        if (currentQuestionIndex < quiz.questions.length - 1) {
-            setCurrentQuestionIndex(currentQuestionIndex + 1);
-        } else {
-            handleSubmitQuiz();
-        }
-    };
-    const handlePreviousQuestion = () => {
-        if (currentQuestionIndex > 0) setCurrentQuestionIndex(currentQuestionIndex - 1);
-    };
-
+    const handleNextQuestion = () => { recordTimeSpent(); if (currentQuestionIndex < quiz.questions.length - 1) { setCurrentQuestionIndex(currentQuestionIndex + 1); } else { handleSubmitQuiz(); } };
+    const handlePreviousQuestion = () => { if (currentQuestionIndex > 0) { setCurrentQuestionIndex(currentQuestionIndex - 1); } };
     const handleSubmitQuiz = async () => {
         if (quizSubmitted || !user) return;
-        setQuizSubmitted(true);
-    
-        let initialScore = 0;
-        let requiresManualGrading = false;
-    
-        const detailedAnswers = quiz.questions.map((question, index) => {
-            const userAnswer = selectedAnswers[index];
-            let pointsAwarded = 0;
-            let status = 'auto_graded';
-
-            switch (question.type) {
-                case 'MCQ':
-                    pointsAwarded = userAnswer === question.correctOption ? (question.points || 0) : 0;
-                    break;
-                case 'FILL_IN_THE_BLANK':
-                    const normUserAns = question.caseSensitive ? (userAnswer || '').trim() : (userAnswer || '').trim().toLowerCase();
-                    const normCorrectAns = (question.answers || []).map(ans => question.caseSensitive ? ans : ans.toLowerCase());
-                    pointsAwarded = normCorrectAns.includes(normUserAns) ? (question.points || 0) : 0;
-                    break;
-                case 'PARAGRAPH':
-                    requiresManualGrading = true;
-                    status = 'pending_review';
-                    break;
-                case 'REORDER':
-                    const isCorrectOrder = userAnswer && question.items && JSON.stringify(userAnswer) === JSON.stringify(question.items);
-                    pointsAwarded = isCorrectOrder ? (question.points || 0) : 0;
-                    break;
-                case 'MATCH_THE_FOLLOWING':
-                    let correctMatches = 0;
-                    if(question.correctMatches && userAnswer) {
-                        Object.entries(question.correctMatches).forEach(([prompt, correctOpt]) => {
-                            if (userAnswer[prompt] === correctOpt) correctMatches++;
-                        });
-                    }
-                    pointsAwarded = (question.prompts?.length > 0) ? Math.round((correctMatches / question.prompts.length) * (question.points || 0)) : 0;
-                    break;
-                case 'CATEGORIZE':
-                    let correctCategorizations = 0;
-                    if(question.items && userAnswer) {
-                        question.items.forEach(item => {
-                            // --- FIX: Correctly check for string equality in the array ---
-                            const studentCategory = Object.keys(userAnswer).find(cat => cat !== 'bank' && userAnswer[cat]?.includes(item.text));
-                            if(studentCategory === item.category) correctCategorizations++;
-                        });
-                    }
-                    pointsAwarded = (question.items?.length > 0) ? Math.round((correctCategorizations / question.items.length) * (question.points || 0)) : 0;
-                    break;
-                case 'READING_COMPREHENSION':
-                    if (question.subQuestions && userAnswer) {
-                        question.subQuestions.forEach((subQ, subIndex) => {
-                           if (subQ.type === 'MCQ' && userAnswer[subIndex] === subQ.correctOption) {
-                               pointsAwarded += (subQ.points || 0);
-                           }
-                        });
-                    }
-                    break;
+        setQuizSubmitted(true); clearInterval(timerRef.current);
+        let totalScore = 0; let speedBonus = 0; let requiresManualGrading = false;
+        const detailedAnswers = quiz.questions.map((q, index) => {
+            const userAnswer = answers[index]; let pointsAwarded = 0; let status = 'auto_graded';
+            switch (q.type) {
+                case 'MCQ': const correctIds = q.mcqData.correctOptions.map(String); const selectedIds = (userAnswer || []).map(String); if(correctIds.length > 0 && correctIds.length === selectedIds.length && correctIds.every(id => selectedIds.includes(id))) { pointsAwarded = q.points; } break;
+                case 'FILL_IN_THE_BLANK': const normUserAns = (userAnswer || '').trim().toLowerCase(); const correctAnswers = q.fillBlankData.answers.map(a => a.text.toLowerCase()); if (correctAnswers.includes(normUserAns)) pointsAwarded = q.points; break;
+                case 'PARAGRAPH': requiresManualGrading = true; status = 'pending_review'; break;
+                case 'MATCH_THE_FOLLOWING': let correctMatches = 0; q.matchData.pairs.forEach(pair => { const droppedAnswerInSlot = userAnswer.pairs[pair.id]; if (droppedAnswerInSlot && droppedAnswerInSlot.answerText === pair.answer) { correctMatches++; } }); pointsAwarded = (q.matchData.pairs.length > 0) ? Math.round((correctMatches / q.matchData.pairs.length) * q.points) : 0; break;
+                case 'CATEGORIZE': let correctCategorizations = 0; q.categorizeData.items.forEach(item => { const studentCategory = Object.keys(userAnswer).find(catId => userAnswer[catId].some(i => i.id === item.id)); if (String(studentCategory) === String(item.categoryId)) { correctCategorizations++; } }); pointsAwarded = (q.categorizeData.items.length > 0) ? Math.round((correctCategorizations / q.categorizeData.items.length) * q.points) : 0; break;
+                case 'REORDER': const isCorrectOrder = userAnswer.every((item, i) => item.id === q.reorderData.items[i].id); if (isCorrectOrder) pointsAwarded = q.points; break;
+                case 'VISUAL_COMPREHENSION': case 'LISTENING_COMPREHENSION': const subQs = q.visualData?.subQuestions || q.listeningData?.subQuestions; let subQPoints = 0; subQs.forEach((subQ, subIndex) => { if(subQ.type === 'MCQ') { const correctSubQIds = subQ.mcqData.correctOptions.map(String); const selectedSubQIds = (userAnswer[subIndex] || []).map(String); if (correctSubQIds.length > 0 && correctSubQIds.length === selectedSubQIds.length && correctSubQIds.every(id => selectedSubQIds.includes(id))) { subQPoints += (subQ.points || 5); } } }); pointsAwarded = subQPoints; break;
             }
-            initialScore += pointsAwarded;
-            return { type: question.type, questionText: question.text, userAnswer, pointsAwarded, status };
+            totalScore += pointsAwarded;
+            if (pointsAwarded > 0) { const timeTaken = timeSpent[index] || q.timeLimit; const timeLimit = parseInt(q.timeLimit, 10); if (timeTaken < timeLimit) { const timeRatio = 1 - (timeTaken / timeLimit); const bonusPoints = Math.round((q.points * 0.2) * timeRatio); speedBonus += bonusPoints; } }
+            return { type: q.type, questionText: q.questionText, userAnswer, pointsAwarded, status };
         });
-    
-        const resultsData = {
-            quizId, userId: user.uid, userEmail: user.email, userName,
-            quizTitle: quiz.title,
-            status: requiresManualGrading ? 'pending_manual_grading' : 'completed',
-            initialScore, finalScore: requiresManualGrading ? null : initialScore,
-            maxScore: quiz.totalPoints || 0,
-            completedAt: serverTimestamp(),
-            timeSpent: quiz.overallTimeLimit ? quiz.overallTimeLimit - timeLeft : null,
-            answers: detailedAnswers
-        };
-    
+        const finalScoreWithBonus = totalScore + speedBonus;
+        const resultsData = { quizId, userId: user.uid, quizTitle: quiz.title, status: requiresManualGrading ? 'pending' : 'completed', score: totalScore, bonus: speedBonus, finalScore: finalScoreWithBonus, maxScore: quiz.totalPoints, completedAt: serverTimestamp(), answers: detailedAnswers, teacherId: quiz.createdBy };
         setFinalResults(resultsData);
-    
-        try {
-            await addDoc(collection(db, "quiz_results"), resultsData);
-        } catch (err) {
-            console.error("Error saving quiz results:", err);
-            setError('Failed to submit quiz. Please try again.');
-            setQuizSubmitted(false);
-        }
+        try { await addDoc(collection(db, "quiz_results"), resultsData); } catch (err) { console.error("Error saving results:", err); }
     };
-
-    const renderTimer = () => {
-        if (timeLeft === null) return '...';
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    };
-
-    if (loading) return <div className="take-quiz-container"><p>Loading quiz...</p></div>;
-    if (error) return <div className="take-quiz-container"><p>{error}</p></div>;
-    if (!quiz) return <div className="take-quiz-container"><p>Quiz not found.</p></div>;
-
-    if (quizSubmitted) {
-        return (
-            <div className="take-quiz-container">
-                <div className="quiz-completed-container">
-                    <h1>Quiz Completed!</h1>
-                    <div className="score-display">
-                        <h2>{finalResults.status === 'pending_manual_grading' ? 'Initial Results' : 'Final Score'}</h2>
-                        <div className="score-circle">
-                            <span className="score-value">{finalResults.initialScore}</span>
-                            <span className="score-divider">/</span>
-                            <span className="score-max">{finalResults.maxScore}</span>
-                        </div>
-                        <p className="score-points-label">Points from auto-graded questions</p>
-                        {finalResults.status === 'pending_manual_grading' && (
-                            <p className="pending-review-text">
-                                Your submission is received. Some questions require manual grading by your teacher.
-                                Your final score will be available once the review is complete.
-                            </p>
-                        )}
-                    </div>
-                    <button onClick={() => navigate('/student/dashboard')} className="return-button">Return to Dashboard</button>
-                </div>
-            </div>
-        );
-    }
     
-    if (!quizStarted) {
-        return (
-            <div className="take-quiz-container">
-                <button onClick={handleSignOut} className="sign-out-top-btn">Sign Out</button>
-                <div className="quiz-intro-container">
-                    <h1>{quiz.title}</h1>
-                    {quiz.description && <p className="quiz-description">{quiz.description}</p>}
-                    <div className="quiz-info">
-                        <div className="info-item"><span>Questions:</span> <strong>{quiz.questions?.length ?? 0}</strong></div>
-                        <div className="info-item"><span>Total Points:</span> <strong>{quiz.totalPoints}</strong></div>
-                        <div className="info-item"><span>Time:</span> <strong>{quiz.overallTimeLimit ? `${Math.floor(quiz.overallTimeLimit / 60)} min` : 'N/A'}</strong></div>
-                    </div>
-                    <button onClick={handleStartQuiz} className="start-quiz-btn">Start Quiz</button>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div className="take-quiz-container"><div className="loading-spinner"></div><p>Loading quiz...</p></div>;
+    if (error) return <div className="take-quiz-container"><p className="quiz-error-message">{error}</p></div>;
 
+    if (!quizStarted) { return (<div className="take-quiz-container"><div className="quiz-intro-container"><h1>{quiz.title}</h1><p className="quiz-description">{quiz.description}</p><div className="quiz-info"><div className="info-item"><span>Questions:</span> <strong>{quiz.questions?.length ?? 0}</strong></div><div className="info-item"><span>Total Points:</span> <strong>{quiz.totalPoints}</strong></div></div><button onClick={() => setQuizStarted(true)} className="start-quiz-btn">Start Quiz</button></div></div>); }
+    if (quizSubmitted) { return (<div className="take-quiz-container"><div className="quiz-completed-container"><h1>Quiz Completed!</h1><div className="score-display"><h2>Your Results</h2><div className="score-breakdown"><div>Base Score: <span>{finalResults.score} / {finalResults.maxScore}</span></div><div>Speed Bonus: <span className="bonus-points">+{finalResults.bonus}</span></div></div><div className="score-circle final-score"><span className="score-label">Final Score</span><span className="score-value">{finalResults.finalScore}</span></div>{finalResults.status === 'pending' && <p className="pending-review-text">Some questions require manual grading by your teacher.</p>}</div><button onClick={() => navigate('/student/dashboard')} className="return-button">Return to Dashboard</button></div></div>); }
+    
     const currentQuestion = quiz.questions[currentQuestionIndex];
-    const currentAnswer = selectedAnswers[currentQuestionIndex];
-    const questionTextWithBlank = currentQuestion.text?.replace(/___/g, '<span class="fill-in-blank-visual"></span>') || currentQuestion.text || '';
-    
-    let unmatchedOptions = [];
-    if(currentQuestion.type === 'MATCH_THE_FOLLOWING') {
-        const matchedValues = Object.values(currentAnswer || {});
-        unmatchedOptions = (shuffledQuestionOptions[currentQuestionIndex] || []).filter(opt => !matchedValues.includes(opt));
+    const currentAnswer = answers[currentQuestionIndex];
+
+    // === THE FIX IS HERE: Correctly identify the media object to render ===
+    let mainMediaToShow = null;
+    if (currentQuestion.type === 'VISUAL_COMPREHENSION' && currentQuestion.visualData) {
+        mainMediaToShow = currentQuestion.visualData.mainMedia;
+    } else if (currentQuestion.type === 'LISTENING_COMPREHENSION' && currentQuestion.listeningData) {
+        mainMediaToShow = currentQuestion.listeningData.mainMedia;
+    } else {
+        mainMediaToShow = currentQuestion.media;
     }
-    
+
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
             <div className="take-quiz-container">
-                <div className="quiz-header">
-                    <h1>{quiz.title}</h1>
-                    <div className="quiz-timer">{renderTimer()}</div>
-                </div>
-                <div className="quiz-progress">
-                    <div className="progress-bar"><div className="progress-fill" style={{ width: `${((currentQuestionIndex + 1) / quiz.questions.length) * 100}%` }}></div></div>
-                    <div className="progress-text">Question {currentQuestionIndex + 1} of {quiz.questions.length}</div>
-                </div>
+                <div className="quiz-header"><h1>{quiz.title}</h1><div className="quiz-timer">{timeLeft}s</div></div>
+                <div className="quiz-progress"><div className="progress-bar"><div className="progress-fill" style={{ width: `${((currentQuestionIndex + 1) / quiz.questions.length) * 100}%` }}></div></div><div className="progress-text">Question {currentQuestionIndex + 1} of {quiz.questions.length}</div></div>
+                <div className="question-container" key={currentQuestion.id}>
+                    
+                    <MediaRenderer media={mainMediaToShow} />
 
-                <div className="question-container" key={currentQuestionIndex}>
-                    <h2 className="question-text" dangerouslySetInnerHTML={{ __html: questionTextWithBlank }}></h2>
+                    <h2 className="question-text">{currentQuestion.questionText}</h2>
                     <div className="answer-area">
-                        {currentQuestion.type === 'MCQ' && (
-                            <div className="options-list">
-                                {(currentQuestion.options || []).map((option, index) => (
-                                    <div key={index} className={`option-item ${currentAnswer === index ? 'selected' : ''}`} onClick={() => handleAnswerChange(index)}>
-                                        <span className="option-letter">{String.fromCharCode(65 + index)}</span>
-                                        {option}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        {currentQuestion.type === 'FILL_IN_THE_BLANK' && (
-                            <input type="text" className="fill-in-blank-input" placeholder="Type your answer here..." value={currentAnswer || ''} onChange={(e) => handleAnswerChange(e.target.value)} />
-                        )}
-                        {currentQuestion.type === 'PARAGRAPH' && (
-                            <textarea className="paragraph-input" placeholder="Type your detailed answer here..." rows="6" value={currentAnswer || ''} onChange={(e) => handleAnswerChange(e.target.value)} />
-                        )}
-
-                        {currentQuestion.type === 'MATCH_THE_FOLLOWING' && (
-                            <div className="match-dnd-container">
-                                <div className="match-prompts-column">
-                                    {(currentQuestion.prompts || []).map(prompt => (
-                                        <Droppable key={prompt} droppableId={`prompt-${prompt}`}>
-                                            {(provided, snapshot) => (
-                                                <div className="match-prompt-zone" data-is-dragging-over={snapshot.isDraggingOver}>
-                                                    <span className="match-prompt-label">{prompt}</span>
-                                                    <div ref={provided.innerRef} {...provided.droppableProps} className="match-drop-area">
-                                                        {currentAnswer && currentAnswer[prompt] ? (
-                                                            <Draggable draggableId={currentAnswer[prompt]} index={0}>
-                                                                {(provided) => (
-                                                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="draggable-option matched">
-                                                                        {currentAnswer[prompt]}
-                                                                    </div>
-                                                                )}
-                                                            </Draggable>
-                                                        ) : <span className="drop-placeholder">Drop here</span>}
-                                                        {provided.placeholder}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </Droppable>
-                                    ))}
-                                </div>
-                                <Droppable droppableId="match-bank">
-                                    {(provided, snapshot) => (
-                                        <div ref={provided.innerRef} {...provided.droppableProps} className="match-option-bank" data-is-dragging-over={snapshot.isDraggingOver}>
-                                            {unmatchedOptions.map((option, index) => (
-                                                <Draggable key={option} draggableId={option} index={index}>
-                                                    {(provided) => (
-                                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="draggable-option">{option}</div>
-                                                    )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </div>
-                                    )}
-                                </Droppable>
-                            </div>
-                        )}
-
-                        {currentQuestion.type === 'REORDER' && (
-                            <Droppable droppableId="reorder-list">
-                                {(provided) => (
-                                    <div {...provided.droppableProps} ref={provided.innerRef} className="reorder-list">
-                                        {(currentAnswer || []).map((item, index) => (
-                                            <Draggable key={item} draggableId={item} index={index}>
-                                                {(provided) => (
-                                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="reorder-item">{item}</div>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </div>
-                                )}
-                            </Droppable>
-                        )}
-
-                        {currentQuestion.type === 'CATEGORIZE' && (
-                            <div className="categorize-board">
-                                <div className="category-columns">
-                                    {(currentQuestion.categories || []).map(category => (
-                                        <Droppable key={category} droppableId={category}>
-                                            {(provided, snapshot) => (
-                                                <div {...provided.droppableProps} ref={provided.innerRef} className="category-column" data-is-dragging-over={snapshot.isDraggingOver}>
-                                                    <h3 className="category-title">{category}</h3>
-                                                    <div className="category-items-container">
-                                                        {currentAnswer && currentAnswer[category]?.map((itemText, index) => (
-                                                            <Draggable key={itemText} draggableId={itemText} index={index}>
-                                                                {(provided) => (
-                                                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="categorize-item">{itemText}</div>
-                                                                )}
-                                                            </Draggable>
-                                                        ))}
-                                                        {provided.placeholder}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </Droppable>
-                                    ))}
-                                </div>
-                                <h3 className='item-bank-title'>Items to sort</h3>
-                                <Droppable droppableId="bank" direction="horizontal">
-                                    {(provided) => (
-                                        <div {...provided.droppableProps} ref={provided.innerRef} className="item-bank">
-                                            {currentAnswer && currentAnswer.bank?.map((itemText, index) => (
-                                                <Draggable key={itemText} draggableId={itemText} index={index}>
-                                                    {(provided) => (
-                                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="categorize-item unassigned">{itemText}</div>
-                                                    )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </div>
-                                    )}
-                                </Droppable>
-                            </div>
-                        )}
-
-                        {currentQuestion.type === 'READING_COMPREHENSION' && (
-                             <div className="comprehension-view">
-                                <div className="passage-box"><p>{currentQuestion.passage}</p></div>
-                                <div className="sub-questions-list">
-                                    <h4>Questions</h4>
-                                    {(currentQuestion.subQuestions || []).map((subQ, subIndex) => (
-                                        <div key={subIndex} className="sub-question-item">
-                                            <p className="sub-question-text">{subIndex + 1}. {subQ.text}</p>
-                                            <div className="sub-question-options">
-                                                {(subQ.options || []).map((opt, optIndex) => (
-                                                     <div key={optIndex} className={`option-item-sub ${currentAnswer && currentAnswer[subIndex] === optIndex ? 'selected' : ''}`} onClick={() => handleAnswerChange(optIndex, subIndex)}>
-                                                        <span className="option-letter-sub">{String.fromCharCode(65 + optIndex)}</span>
-                                                        {opt}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        {currentQuestion.type === 'MCQ' && (<div className="options-list mcq">{currentQuestion.mcqData.options.map((option) => (<div key={option.id} className={`option-item ${currentAnswer?.includes(option.id) ? 'selected' : ''}`} onClick={() => handleAnswerChange(option.id)}><div className="option-checkbox">{currentAnswer?.includes(option.id) && '✔'}</div>{option.text && <span className="option-text">{option.text}</span>}<MediaRenderer media={option.media} /></div>))}</div>)}
+                        {currentQuestion.type === 'FILL_IN_THE_BLANK' && (<input type="text" className="fill-in-blank-input" value={currentAnswer || ''} onChange={(e) => handleAnswerChange(e.target.value)} />)}
+                        {currentQuestion.type === 'PARAGRAPH' && (<textarea className="paragraph-input" value={currentAnswer || ''} onChange={(e) => handleAnswerChange(e.target.value)} />)}
+                        {currentQuestion.type === 'MATCH_THE_FOLLOWING' && currentAnswer && (<div className="match-dnd-container"><div className="match-prompts-column">{currentQuestion.matchData.pairs.map(pair => (<div key={pair.id} className="match-prompt-item"><div className="match-prompt-content"><MediaRenderer media={pair.promptMedia} /><span className="match-prompt-label">{pair.prompt}</span></div><Droppable droppableId={String(pair.id)}>{(provided, snapshot) => (<div ref={provided.innerRef} {...provided.droppableProps} className={`match-drop-area ${snapshot.isDraggingOver ? 'over' : ''}`}>{currentAnswer.pairs[pair.id] ? <Draggable draggableId={String(currentAnswer.pairs[pair.id].id)} index={0}>{(p) => (<div ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} className="draggable-option matched"><MediaRenderer media={currentAnswer.pairs[pair.id].answerMedia}/><span>{currentAnswer.pairs[pair.id].answerText}</span></div>)}</Draggable> : <span className="drop-placeholder">Drop here</span>}{provided.placeholder}</div>)}</Droppable></div>))}</div><div className="match-option-bank-wrapper"><h4>Answers</h4><Droppable droppableId="bank">{(provided) => (<div ref={provided.innerRef} {...provided.droppableProps} className="match-option-bank">{currentAnswer.bank.map((answer, index) => (<Draggable key={answer.id} draggableId={String(answer.id)} index={index}>{(p) => (<div ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} className="draggable-option"><MediaRenderer media={answer.answerMedia}/><span>{answer.answerText}</span></div>)}</Draggable>))}{provided.placeholder}</div>)}</Droppable></div></div>)}
+                        {currentQuestion.type === 'REORDER' && currentAnswer && (<Droppable droppableId="reorder-list">{(provided) => (<div {...provided.droppableProps} ref={provided.innerRef} className="reorder-list">{currentAnswer.map((item, index) => (<Draggable key={item.id} draggableId={String(item.id)} index={index}>{(p) => (<div ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} className="reorder-item"><FaGripLines/><MediaRenderer media={item.media} className="reorder-item-media"/><span>{item.text}</span></div>)}</Draggable>))}{provided.placeholder}</div>)}</Droppable>)}
+                        {currentQuestion.type === 'CATEGORIZE' && currentAnswer && (<div className="categorize-board"><div className="category-columns">{currentQuestion.categorizeData.categories.map(cat => (<Droppable key={cat.id} droppableId={String(cat.id)}>{(provided) => (<div {...provided.droppableProps} ref={provided.innerRef} className="category-column"><h3 className="category-title">{cat.name}</h3><div className="category-items-container">{currentAnswer[cat.id]?.map((item, index) => (<Draggable key={item.id} draggableId={String(item.id)} index={index}>{(p) => (<div ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} className="categorize-item"><MediaRenderer media={item.media}/><span>{item.text}</span></div>)}</Draggable>))}{provided.placeholder}</div></div>)}</Droppable>))}</div><div className="item-bank-wrapper"><h4>Items to Sort</h4><Droppable droppableId="bank" direction="horizontal">{(provided) => (<div {...provided.droppableProps} ref={provided.innerRef} className="item-bank">{currentAnswer.bank?.map((item, index) => (<Draggable key={item.id} draggableId={String(item.id)} index={index}>{(p) => (<div ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps} className="categorize-item unassigned"><MediaRenderer media={item.media}/><span>{item.text}</span></div>)}</Draggable>))}{provided.placeholder}</div>)}</Droppable></div></div>)}
+                        {(currentQuestion.type === 'VISUAL_COMPREHENSION' || currentQuestion.type === 'LISTENING_COMPREHENSION') && (<div className="comprehension-view"><div className="sub-questions-list">{(currentQuestion.visualData?.subQuestions || currentQuestion.listeningData?.subQuestions).map((subQ, subIndex) => (<div key={subQ.id} className="sub-question-item"><p className="sub-question-text">{subIndex + 1}. {subQ.questionText}</p>{subQ.type === 'MCQ' && (<div className="options-list sub-mcq">{subQ.mcqData.options.map((option) => (<div key={option.id} className={`option-item ${currentAnswer[subIndex]?.includes(option.id) ? 'selected' : ''}`} onClick={() => handleAnswerChange(option.id, subIndex)}><div className="option-checkbox">{currentAnswer[subIndex]?.includes(option.id) && '✔'}</div><span className="option-text">{option.text}</span></div>))}</div>)}</div>))}</div></div>)}
                     </div>
                 </div>
-
-                <div className="quiz-navigation">
-                    <button onClick={handlePreviousQuestion} className="nav-button prev-button" disabled={currentQuestionIndex === 0}>Previous</button>
-                    <button onClick={handleNextQuestion} className="nav-button next-button">{currentQuestionIndex < quiz.questions.length - 1 ? 'Next' : 'Submit Quiz'}</button>
-                </div>
-                <div className="question-dots">{quiz.questions.map((_, index) => (<div key={index} className={`question-dot ${index === currentQuestionIndex ? 'active' : ''} ${selectedAnswers[index] ? 'answered' : ''}`} onClick={() => setCurrentQuestionIndex(index)}></div>))}</div>
+                <div className="quiz-navigation"><button onClick={handlePreviousQuestion} className="nav-button prev-button" disabled={currentQuestionIndex === 0}><FaArrowLeft /> Previous</button><button onClick={handleNextQuestion} className="nav-button next-button">{currentQuestionIndex < quiz.questions.length - 1 ? 'Next' : 'Submit Quiz'} <FaArrowRight /></button></div>
             </div>
         </DragDropContext>
     );
