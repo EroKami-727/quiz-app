@@ -2,13 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ImageKit from 'imagekit-javascript';
 
-// --- CORRECTED FIRESTORE IMPORT PATH and added necessary functions ---
-// Assuming firebase.js is in src/ and MediaTest.jsx is in src/some_folder/
-import { db } from '../../firebase';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
-// --- END CORRECTED FIRESTORE IMPORTS ---
-
-
 // Initialize the ImageKit SDK once with your public keys.
 const imagekit = new ImageKit({
   publicKey: import.meta.env.VITE_PUBLIC_KEY,
@@ -76,16 +69,8 @@ const MediaTest = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState(''); // For ImageKit errors
+  const [error, setError] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  // === NEW STATE FOR FIRESTORE DELETION ===
-  const [isDeletingAllFirestore, setIsDeletingAllFirestore] = useState(false);
-  const [firestoreDeleteMessage, setFirestoreDeleteMessage] = useState(''); // Success message for Firestore
-  const [firestoreDeleteError, setFirestoreDeleteError] = useState('');     // Error message for Firestore
-  const [firestoreDeletedCount, setFirestoreDeletedCount] = useState(0);    // Counter for deleted docs
-  // --- END NEW STATE ---
-
 
   // Helper to determine the backend API URL.
   const getApiUrl = () => {
@@ -160,61 +145,6 @@ const MediaTest = () => {
     alert("Client-side deletion is disabled for security. This feature requires a dedicated, secure backend endpoint.");
   };
 
-  // === NEW FUNCTION FOR FIRESTORE BULK DELETION ===
-  const handleDeleteAllQuizResultsFirestore = async () => {
-    if (!window.confirm("ARE YOU ABSOLUTELY SURE you want to delete ALL documents in the 'quiz_results' collection? This action cannot be undone.")) {
-      return;
-    }
-
-    setIsDeletingAllFirestore(true);
-    setFirestoreDeleteMessage('');
-    setFirestoreDeleteError('');
-    setFirestoreDeletedCount(0);
-
-    const collectionRef = collection(db, 'quiz_results');
-    let totalDeleted = 0;
-
-    try {
-      // Firestore `getDocs` fetches up to 500 documents by default.
-      // We loop to handle collections larger than 500 documents.
-      while (true) {
-        const snapshot = await getDocs(collectionRef);
-
-        if (snapshot.empty) {
-          setFirestoreDeleteMessage('No documents found in "quiz_results" to delete.');
-          break; // Exit loop if no more documents
-        }
-
-        const batch = writeBatch(db); // Create a new batch for up to 500 operations
-        let currentBatchCount = 0;
-
-        snapshot.docs.forEach((documentSnapshot) => {
-          batch.delete(doc(db, 'quiz_results', documentSnapshot.id));
-          currentBatchCount++;
-          totalDeleted++;
-        });
-
-        await batch.commit(); // Commit the batch
-        setFirestoreDeletedCount(totalDeleted); // Update the counter
-        console.log(`Committed batch of ${currentBatchCount} deletions from 'quiz_results'. Total deleted: ${totalDeleted}`);
-
-        // If the number of documents retrieved in this snapshot is less than 500,
-        // it means we've processed all remaining documents and can stop.
-        if (snapshot.docs.length < 500) {
-            setFirestoreDeleteMessage(`Successfully deleted ${totalDeleted} documents from 'quiz_results'.`);
-            break;
-        }
-      }
-
-    } catch (err) {
-      console.error('Error deleting documents from Firestore:', err);
-      setFirestoreDeleteError(`Failed to delete Firestore documents: ${err.message}`);
-    } finally {
-      setIsDeletingAllFirestore(false);
-    }
-  };
-
-
   return (
     <div style={{ 
       maxWidth: '800px', 
@@ -234,9 +164,8 @@ const MediaTest = () => {
         <strong>🔗 API Endpoint Base:</strong> {getApiUrl() || '(Relative Path)'}
       </div>
 
-      {/* ImageKit Upload Section */}
       <div style={{ border: '2px dashed #ddd', borderRadius: '8px', padding: '20px', textAlign: 'center', marginBottom: '20px', backgroundColor: '#fafafa' }}>
-        <h3>Upload Media File (ImageKit)</h3>
+        <h3>Upload Media File</h3>
         <input type="file" accept="image/*,video/*,audio/*" onChange={handleFileSelect} style={{ marginBottom: '15px' }} />
         
         {selectedFile && !uploadedFile && (
@@ -263,18 +192,18 @@ const MediaTest = () => {
         )}
       </div>
 
-      {error && ( // ImageKit upload errors
+      {error && (
         <div style={{ backgroundColor: '#f8d7da', color: '#721c24', padding: '12px', borderRadius: '4px', marginBottom: '20px', border: '1px solid #f5c6cb' }}>
           ❌ {error}
         </div>
       )}
 
-      {uploadedFile && ( // ImageKit uploaded file info
+      {uploadedFile && (
         <div style={{ backgroundColor: '#d4edda', color: '#155724', padding: '20px', borderRadius: '8px', border: '1px solid #c3e6cb', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h3 style={{ margin: 0 }}>✅ Secure Upload Successful!</h3>
             <button onClick={handleDelete} style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-              Delete File (ImageKit)
+              Delete File
             </button>
           </div>
 
@@ -291,79 +220,6 @@ const MediaTest = () => {
           </div>
         </div>
       )}
-
-      <hr style={{ margin: '40px 0', borderColor: '#eee' }} />
-
-      {/* === NEW FIRESTORE ADMIN SECTION === */}
-      <div style={{
-        border: '2px solid #dc3545', // Red border for high visibility
-        borderRadius: '8px',
-        padding: '20px',
-        textAlign: 'center',
-        marginBottom: '20px',
-        backgroundColor: '#ffebee', // Light red background
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        <h3 style={{ color: '#dc3545', marginBottom: '15px' }}>
-          🔥 Admin: Delete ALL Quiz Results (Firestore) 🔥
-        </h3>
-        <p style={{ color: '#d32f2f', marginBottom: '20px', fontSize: '0.9em' }}>
-          <strong>EXTREME CAUTION:</strong> This will permanently delete ALL documents in the
-          <code style={{ backgroundColor: '#ffdadb', padding: '2px 4px', borderRadius: '3px' }}>quiz_results</code> Firestore collection.
-          This action is irreversible and intended for development cleanup.
-        </p>
-        <button
-          onClick={handleDeleteAllQuizResultsFirestore}
-          disabled={isDeletingAllFirestore}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            backgroundColor: isDeletingAllFirestore ? '#ccc' : '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            fontSize: '1em',
-            cursor: isDeletingAllFirestore ? 'not-allowed' : 'pointer',
-            transition: 'background-color 0.3s ease'
-          }}
-        >
-          {isDeletingAllFirestore ? `Deleting Documents... (${firestoreDeletedCount})` : 'Delete ALL Quiz Results from Firestore'}
-        </button>
-
-        {isDeletingAllFirestore && (
-          <p style={{ textAlign: 'center', marginTop: '15px', color: '#dc3545', fontWeight: 'bold' }}>
-            Processing deletion... (Count: {firestoreDeletedCount})
-          </p>
-        )}
-
-        {firestoreDeleteMessage && (
-          <p style={{
-            backgroundColor: '#d4edda', // Green for success
-            color: '#155724',
-            padding: '10px',
-            borderRadius: '5px',
-            marginTop: '20px',
-            border: '1px solid #c3e6cb'
-          }}>
-            ✅ {firestoreDeleteMessage}
-          </p>
-        )}
-
-        {firestoreDeleteError && (
-          <p style={{
-            backgroundColor: '#f8d7da', // Red for error
-            color: '#721c24',
-            padding: '10px',
-            borderRadius: '5px',
-            marginTop: '20px',
-            border: '1px solid #f5c6cb'
-          }}>
-            ❌ {firestoreDeleteError}
-          </p>
-        )}
-      </div>
-      {/* === END FIRESTORE ADMIN SECTION === */}
-
     </div>
   );
 };
