@@ -1,68 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes } from 'react-icons/fa';
-import '../styles/Teacher/CreateQuiz.css'; // We'll add styles here
+import { FaCrop } from 'react-icons/fa';
 
-const MediaPreview = ({ file, onRemove }) => {
+// NOTE: The incorrect CSS import has been removed from this file.
+
+const getCroppedUrl = (imageSrc, crop) => {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.src = imageSrc;
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = crop.width;
+      canvas.height = crop.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+      resolve(canvas.toDataURL('image/jpeg'));
+    };
+    image.onerror = () => { resolve(imageSrc); };
+  });
+};
+
+const MediaPreview = ({ file, cropData, onEdit }) => {
   const [previewUrl, setPreviewUrl] = useState('');
   const [fileType, setFileType] = useState('unknown');
 
   useEffect(() => {
-    if (!file) {
-      setPreviewUrl('');
-      return;
-    }
-
-    const isLocalFile = !file.url;
-    let url = isLocalFile ? URL.createObjectURL(file) : file.url;
+    if (!file) { setPreviewUrl(''); return; }
+    let isMounted = true;
+    const isLocalFile = file instanceof File;
+    let localUrl = isLocalFile ? URL.createObjectURL(file) : null;
+    let displayUrl = isLocalFile ? localUrl : file.url;
     
-    // Determine file type FIRST
     let determinedFileType = 'unknown';
     const source = file.name || file.url || '';
-    if (file.fileType === 'image' || /\.(jpe?g|png|gif|webp|svg)$/i.test(source)) determinedFileType = 'image';
-    else if (file.fileType === 'video' || /\.(mp4|webm|mov|ogg)$/i.test(source)) determinedFileType = 'video';
-    else if (file.fileType === 'audio' || /\.(mp3|wav|aac|flac)$/i.test(source)) determinedFileType = 'audio';
+    if ((file.type && file.type.startsWith('image/')) || /\.(jpe?g|png|gif|webp|svg)$/i.test(source)) determinedFileType = 'image';
+    else if ((file.type && file.type.startsWith('video/')) || /\.(mp4|webm|mov|ogg)$/i.test(source)) determinedFileType = 'video';
+    else if ((file.type && file.type.startsWith('audio/')) || /\.(mp3|wav|aac|flac|m4a)$/i.test(source)) determinedFileType = 'audio';
     setFileType(determinedFileType);
-    
-    // Apply ImageKit transform ONLY to uploaded images
-    if (!isLocalFile && determinedFileType === 'image') {
-      // Transformation: width=300, height=200, crop-mode=at_max (fit inside box, no crop)
-      url = `${file.url}?tr=w-300,h-200,c-at_max`;
-    }
-    
-    setPreviewUrl(url);
 
-    // This is the cleanup function. It runs when the component unmounts or the file changes.
-    return () => {
-      // If the URL was a temporary local one, revoke it to prevent memory leaks.
-      if (isLocalFile) {
-        URL.revokeObjectURL(url);
+    const setupUrls = async () => {
+      if (isLocalFile && cropData?.pixels) {
+        const croppedDataUrl = await getCroppedUrl(localUrl, cropData.pixels);
+        if (isMounted) setPreviewUrl(croppedDataUrl);
+      } else if (!isLocalFile && file.url && cropData?.pixels) {
+        const { x, y, width, height, rotation } = cropData.pixels;
+        let transformString = `x-${Math.round(x)},y-${Math.round(y)},w-${Math.round(width)},h-${Math.round(height)}`;
+        if (rotation) {
+            transformString += `,rt-${rotation}`
+        }
+        displayUrl = `${file.url}?tr=${transformString}`;
+        if (isMounted) setPreviewUrl(displayUrl);
+      } else {
+        if (isMounted) setPreviewUrl(displayUrl);
       }
     };
-  }, [file]); // Dependency array ensures this effect re-runs only when the file changes.
+    setupUrls();
+    
+    return () => { isMounted = false; if (localUrl) URL.revokeObjectURL(localUrl); };
+  }, [file, cropData]);
 
   if (!previewUrl) return null;
 
   const renderMedia = () => {
     switch (fileType) {
-      case 'image':
-        return <img src={previewUrl} alt="Preview" className="media-preview-asset" />;
-      case 'video':
-        return <video controls src={previewUrl} className="media-preview-asset" />;
-      case 'audio':
-        return <audio controls src={previewUrl} style={{ width: '100%' }} />;
-      default:
-        return <p>Unsupported file</p>;
+      case 'image': return <img src={previewUrl} alt="Preview" className="media-preview-asset" />;
+      case 'video': return <video controls src={file.url || previewUrl} className="media-preview-asset" />;
+      case 'audio': return <audio controls src={file.url || previewUrl} style={{ width: '100%' }} />;
+      default: return <p>Unsupported file</p>;
     }
   };
 
+  const isEditable = onEdit && fileType === 'image';
+
   return (
-    <div className="media-preview-wrapper">
+    <div className={`media-preview-wrapper ${isEditable ? 'editable' : ''}`} onClick={isEditable ? onEdit : undefined}>
       {renderMedia()}
-      {onRemove && (
-        <button type="button" className="media-preview-remove-btn" onClick={onRemove}>
-          <FaTimes />
-        </button>
-      )}
+      {isEditable && (<div className="media-preview-edit-overlay"><FaCrop /><span>Edit Crop</span></div>)}
     </div>
   );
 };
