@@ -196,7 +196,7 @@ const TakeQuiz = () => {
                         </div>
                         <div className="completion-actions">
                             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate('/student/dashboard')} className="return-button">Back to Dashboard</motion.button>
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/student/results/${finalResults.id}`)} className="review-button"><FaClipboardList /> View Review</motion.button>
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => navigate(`/student/results/`)} className="review-button"><FaClipboardList /> View Review</motion.button>
                         </div>
                     </div>
                 ) : (
