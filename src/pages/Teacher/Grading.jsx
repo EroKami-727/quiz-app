@@ -1,10 +1,65 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAuth } from 'firebase/auth';
 import { db } from '../../firebase';
-import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, orderBy } from 'firebase/firestore';
 import { useParams, useNavigate } from 'react-router-dom';
 import '../../styles/Teacher/Grading.css';
-import { FaArrowLeft, FaTimes, FaCheckCircle, FaHourglassHalf } from 'react-icons/fa';
+import { FaArrowLeft, FaTimes, FaCheckCircle, FaHourglassHalf, FaSave } from 'react-icons/fa';
+import MediaRenderer from '../../components/MediaRenderer';
+
+const AnswerToGrade = ({ originalQuestion, answer, onPointsChange, isGraded }) => {
+    const renderUserAnswer = () => {
+        const userAnswer = answer.userAnswer;
+        if ((!userAnswer && typeof userAnswer !== 'string') || (Array.isArray(userAnswer) && userAnswer.length === 0)) {
+            return <p><i>No answer provided.</i></p>;
+        }
+        switch(originalQuestion.type) {
+            case 'MCQ':
+                return <ul className="grading-answer-list">{originalQuestion.mcqData.options.filter(opt => userAnswer.includes(opt.id)).map(opt => <li key={opt.id}><MediaRenderer media={opt.media} transform="thumbnail"/>{opt.text || 'Media Answer'}</li>)}</ul>;
+            case 'FILL_IN_THE_BLANK': case 'PARAGRAPH':
+                return <p className="grading-text-answer">{userAnswer}</p>;
+            case 'REORDER':
+                return <ol className="grading-answer-list">{userAnswer.map(item => <li key={item.id}><MediaRenderer media={item.media} transform="thumbnail"/>{item.text}</li>)}</ol>;
+            case 'CATEGORIZE':
+                return (<div className="grading-categorize-review">{originalQuestion.categorizeData.categories.map(cat => (<div key={cat.id}><strong>{cat.name}:</strong><ul className="grading-answer-list">{(userAnswer[cat.id] || []).map(item => <li key={item.id}><MediaRenderer media={item.media} transform="thumbnail"/>{item.text}</li>)}</ul></div>))}</div>);
+            case 'MATCH_THE_FOLLOWING':
+                 return (<ul className="grading-answer-list">{originalQuestion.matchData.pairs.map(pair => (<li key={pair.id}><div className="grading-match-review"><div className="grading-match-part"><MediaRenderer media={pair.promptMedia} transform="thumbnail"/>{pair.prompt}</div><span>→</span><div className="grading-match-part">{userAnswer.pairs?.[pair.id] ? <><MediaRenderer media={userAnswer.pairs[pair.id].answerMedia} transform="thumbnail"/>{userAnswer.pairs[pair.id].answerText}</> : <i>(unmatched)</i>}</div></div></li>))}</ul>);
+            default: return <p><i>Review unavailable.</i></p>;
+        }
+    };
+
+    return (
+        <div className={`question-to-grade ${answer.status}`}>
+            <h4>{answer.questionIndex + 1}. {originalQuestion.questionText}</h4>
+            <div className="grading-details">
+                <div className="student-answer-box">
+                    <label>Student's Answer</label>
+                    <div className="answer-content-box">{renderUserAnswer()}</div>
+                </div>
+                <div className="teacher-controls">
+                    {originalQuestion.paragraphData?.keywords?.length > 0 && (
+                        <div className="keywords-box">
+                            <label>Grading Keywords</label>
+                            <div className="keywords-list">{originalQuestion.paragraphData.keywords.map((kw, i) => <span key={i} className="keyword-chip">{kw.text}</span>)}</div>
+                        </div>
+                    )}
+                    <div className="points-awarded-group">
+                        <label htmlFor={`points-${answer.questionIndex}`}>Points Awarded</label>
+                        <div className="points-input-container">
+                            <input 
+                                id={`points-${answer.questionIndex}`} type="number"
+                                value={answer.pointsAwarded === null || answer.pointsAwarded === undefined ? '' : answer.pointsAwarded}
+                                onChange={(e) => onPointsChange(e.target.value)}
+                                max={originalQuestion.points} min="0" disabled={isGraded}
+                            />
+                            <span className="max-points-text">/ {originalQuestion.points}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const Grading = () => {
     const { quizId } = useParams();
@@ -16,15 +71,13 @@ const Grading = () => {
     const [submissions, setSubmissions] = useState([]);
     const [error, setError] = useState('');
     
-    // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
 
     const fetchSubmissions = useCallback(async () => {
         if (!auth.currentUser) return;
-        setLoading(true);
-        setError('');
+        setLoading(true); setError('');
         try {
             // 1. Fetch Quiz Details
             const quizDocRef = doc(db, 'quizzes', quizId);
@@ -41,14 +94,31 @@ const Grading = () => {
             const querySnapshot = await getDocs(submissionsQuery);
             const fetchedSubmissions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+            // --- THE FIX IS HERE: Fetch user names for all submissions ---
+            const userIds = [...new Set(fetchedSubmissions.map(sub => sub.userId))];
+            const userNames = {};
+            if (userIds.length > 0) {
+                const usersQuery = query(collection(db, 'users'), where('__name__', 'in', userIds));
+                const usersSnapshot = await getDocs(usersQuery);
+                usersSnapshot.forEach(doc => {
+                    userNames[doc.id] = doc.data().displayName || doc.data().email;
+                });
+            }
+
+            // Combine submission data with user names
+            const submissionsWithNames = fetchedSubmissions.map(sub => ({
+                ...sub,
+                userName: userNames[sub.userId] || 'Unknown Student'
+            }));
+
             // Sort by status: pending first
-            fetchedSubmissions.sort((a, b) => {
-                if (a.status === 'pending_manual_grading' && b.status !== 'pending_manual_grading') return -1;
-                if (a.status !== 'pending_manual_grading' && b.status === 'pending_manual_grading') return 1;
+            submissionsWithNames.sort((a, b) => {
+                if (a.status === 'pending' && b.status !== 'pending') return -1;
+                if (a.status !== 'pending' && b.status === 'pending') return 1;
                 return new Date(b.completedAt?.toDate()) - new Date(a.completedAt?.toDate());
             });
             
-            setSubmissions(fetchedSubmissions);
+            setSubmissions(submissionsWithNames);
 
         } catch (err) {
             console.error("Error fetching data:", err);
@@ -73,68 +143,54 @@ const Grading = () => {
     const handleOpenModal = (submission) => {
         const submissionWithEditableAnswers = {
             ...submission,
-            answers: submission.answers.map(ans => ({ ...ans }))
+            answers: submission.answers.map((ans, index) => ({ ...ans, questionIndex: index }))
         };
         setSelectedSubmission(submissionWithEditableAnswers);
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedSubmission(null);
-    };
+    const handleCloseModal = () => { setIsModalOpen(false); setSelectedSubmission(null); };
 
-    const handlePointsChange = (questionIndex, points) => {
-        const newPoints = parseInt(points, 10);
-        const updatedSubmission = { ...selectedSubmission };
-        
+    const handlePointsChange = (questionIndex, pointsStr) => {
+        const points = pointsStr === '' ? null : parseInt(pointsStr, 10);
         const originalQuestionPoints = quizDetails.questions[questionIndex].points;
 
-        if (!isNaN(newPoints) && newPoints >= 0 && newPoints <= originalQuestionPoints) {
-            updatedSubmission.answers[questionIndex].pointsAwarded = newPoints;
-        } else if (points === '') {
-             updatedSubmission.answers[questionIndex].pointsAwarded = null;
-        }
-
-        setSelectedSubmission(updatedSubmission);
+        setSelectedSubmission(currentSub => {
+            const newAnswers = currentSub.answers.map((ans, index) => {
+                if (index === questionIndex) {
+                    if (points === null) { return { ...ans, pointsAwarded: null }; }
+                    if (!isNaN(points) && points >= 0 && points <= originalQuestionPoints) { return { ...ans, pointsAwarded: points }; }
+                }
+                return ans;
+            });
+            return { ...currentSub, answers: newAnswers };
+        });
     };
 
     const handleSubmitGrading = async () => {
         if (!selectedSubmission) return;
         setIsSaving(true);
         
-        const { id, initialScore, answers } = selectedSubmission;
-
-        const manualScore = answers
-            .filter(ans => ans.status === 'pending_review')
-            .reduce((sum, ans) => sum + (ans.pointsAwarded || 0), 0);
+        // Recalculate total score based on potentially edited points
+        const totalScore = selectedSubmission.answers.reduce((sum, ans) => sum + (ans.pointsAwarded || 0), 0);
         
-        const finalScore = (initialScore || 0) + manualScore;
-
-        const updatedAnswers = answers.map(ans => {
-            if (ans.status === 'pending_review') {
-                return { 
-                    ...ans, 
-                    status: 'manually_graded',
-                    pointsAwarded: ans.pointsAwarded === null || ans.pointsAwarded === undefined ? 0 : ans.pointsAwarded,
-                 };
-            }
-            return ans;
-        });
+        const updatedAnswers = selectedSubmission.answers.map(ans => ({
+            ...ans,
+            status: 'manually_graded', // Mark all as graded/reviewed by teacher
+            pointsAwarded: ans.pointsAwarded === null || ans.pointsAwarded === undefined ? 0 : ans.pointsAwarded,
+        }));
 
         try {
-            const submissionRef = doc(db, 'quiz_results', id);
+            const submissionRef = doc(db, 'quiz_results', selectedSubmission.id);
             await updateDoc(submissionRef, {
-                finalScore: finalScore,
-                manualScore: manualScore,
+                score: totalScore,
+                finalScore: totalScore + (selectedSubmission.bonus || 0),
                 answers: updatedAnswers,
                 status: 'completed'
             });
 
-            setSubmissions(prev => prev.map(sub => 
-                sub.id === id ? { ...sub, finalScore, status: 'completed', answers: updatedAnswers } : sub
-            ));
-
+            // Re-fetch to get the latest data and re-sort the list
+            fetchSubmissions();
             handleCloseModal();
         } catch (err) {
             console.error("Error saving grade:", err);
@@ -145,50 +201,29 @@ const Grading = () => {
     };
 
 
-    if (loading) {
-        return <div className="loading-screen">Loading Submissions...</div>;
-    }
+    if (loading) { return <div className="loading-screen">Loading Submissions...</div>; }
 
     return (
         <div className="grading-container">
             <div className="grading-content">
                 <div className="page-header">
-                    <button onClick={() => navigate('/teacher/your-quizzes')} className="back-btn">
-                        <FaArrowLeft /> Your Quizzes
-                    </button>
+                    <button onClick={() => navigate('/teacher/your-quizzes')} className="back-btn"><FaArrowLeft /> Your Quizzes</button>
                     <h1 className="page-title">{quizDetails ? `Grading: ${quizDetails.title}` : 'Grading'}</h1>
                     <div className="submission-count">{submissions.length} Submissions</div>
                 </div>
-
                 {error && <div className="error-message">{error}</div>}
-
                 {submissions.length === 0 ? (
-                    <div className="no-submissions">
-                        <h3>No Submissions Yet</h3>
-                        <p>Check back later once students have completed the quiz.</p>
-                    </div>
+                    <div className="no-submissions"><h3>No Submissions Yet</h3><p>Check back later once students have completed the quiz.</p></div>
                 ) : (
                     <div className="submissions-list">
                         {submissions.map(sub => (
                             <div key={sub.id} className="submission-card">
-                                <div className="student-info">
-                                    <span className="student-name">{sub.username || 'Unknown Student'}</span>
-                                    <span className="student-email">{sub.userEmail}</span>
-                                </div>
-                                <div className="score-info">
-                                    <span className="score-label">Score</span>
-                                    <span className="score-value">
-                                        {sub.status === 'completed' ? `${sub.finalScore} / ${sub.maxScore}` : `${sub.initialScore} / ${sub.maxScore}`}
-                                    </span>
-                                </div>
+                                <div className="student-info"><span className="student-name">{sub.userName}</span><span className="student-email">{sub.userEmail}</span></div>
+                                <div className="score-info"><span className="score-label">Score</span><span className="score-value">{sub.status === 'completed' ? `${sub.finalScore} / ${sub.maxScore}` : `${sub.score} / ${sub.maxScore}`}</span></div>
                                 <div className={`status-badge ${sub.status}`}>
                                     {sub.status === 'completed' ? <><FaCheckCircle/> Completed</> : <><FaHourglassHalf/> Pending Review</>}
                                 </div>
-                                <button 
-                                    className="grade-now-btn"
-                                    onClick={() => handleOpenModal(sub)}
-                                    disabled={sub.status === 'completed'}
-                                >
+                                <button className="grade-now-btn" onClick={() => handleOpenModal(sub)}>
                                     {sub.status === 'completed' ? 'View Graded' : 'Grade Now'}
                                 </button>
                             </div>
@@ -200,60 +235,23 @@ const Grading = () => {
             {isModalOpen && selectedSubmission && quizDetails && (
                 <div className="modal-overlay" onClick={handleCloseModal}>
                     <div className="modal-content grading-modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>Grade: {selectedSubmission.username}</h2>
-                            <button onClick={handleCloseModal} className="close-btn"><FaTimes /></button>
-                        </div>
+                        <div className="modal-header"><h2>Grade: {selectedSubmission.userName}</h2><button onClick={handleCloseModal} className="close-btn"><FaTimes /></button></div>
                         <div className="modal-body">
-                            {selectedSubmission.answers.map((answer, index) => {
-                                if (answer.status !== 'pending_review' && answer.status !== 'manually_graded') return null;
-
-                                const originalQuestion = quizDetails.questions[index];
-
-                                return (
-                                    <div key={index} className={`question-to-grade ${answer.status}`}>
-                                        <h4>{index + 1}. {answer.questionText}</h4>
-                                        <div className="grading-details">
-                                            <div className="student-answer-box">
-                                                <label>Student's Answer</label>
-                                                <p>{answer.userAnswer}</p>
-                                            </div>
-                                            <div className="teacher-controls">
-                                                {originalQuestion.gradingKeywords?.length > 0 && (
-                                                    <div className="keywords-box">
-                                                        <label>Keywords</label>
-                                                        <div className="keywords-list">
-                                                            {originalQuestion.gradingKeywords.map(kw => <span key={kw} className="keyword-chip">{kw}</span>)}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {/* --- THIS IS THE UPDATED JSX STRUCTURE FOR THE SCORE INPUT --- */}
-                                                <div className="points-awarded-group">
-                                                    <label htmlFor={`points-${index}`}>Points Awarded</label>
-                                                    <div className="points-input-container">
-                                                        <input 
-                                                            id={`points-${index}`}
-                                                            type="number"
-                                                            value={answer.pointsAwarded === null || answer.pointsAwarded === undefined ? '' : answer.pointsAwarded}
-                                                            onChange={(e) => handlePointsChange(index, e.target.value)}
-                                                            max={originalQuestion.points}
-                                                            min="0"
-                                                            disabled={selectedSubmission.status === 'completed'}
-                                                        />
-                                                        <span className="max-points-text">/ {originalQuestion.points}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {quizDetails.questions.map((originalQuestion, index) => (
+                                <AnswerToGrade 
+                                    key={originalQuestion.id || index}
+                                    originalQuestion={originalQuestion}
+                                    answer={selectedSubmission.answers[index]}
+                                    onPointsChange={(points) => handlePointsChange(index, points)}
+                                    isGraded={selectedSubmission.status === 'completed'}
+                                />
+                            ))}
                         </div>
                         {selectedSubmission.status !== 'completed' && (
                             <div className="modal-actions">
                                 <button onClick={handleCloseModal} className="cancel-btn">Cancel</button>
                                 <button onClick={handleSubmitGrading} className="save-grade-btn" disabled={isSaving}>
-                                    {isSaving ? 'Saving...' : 'Save & Complete'}
+                                    {isSaving ? 'Saving...' : 'Save & Complete Grade'}
                                 </button>
                             </div>
                         )}
