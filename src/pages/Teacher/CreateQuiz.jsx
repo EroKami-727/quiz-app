@@ -9,7 +9,14 @@ import ImageKit from 'imagekit-javascript';
 import MediaPreview from '../../components/MediaPreview';
 import ImageCropperModal from '../../components/ImageCropperModal';
 
-const imagekit = new ImageKit({ publicKey: import.meta.env.VITE_PUBLIC_KEY, urlEndpoint: import.meta.env.VITE_URL_ENDPOINT });
+// Initialize ImageKit globally. The authenticationEndpoint is generally for simpler uses
+// or if the SDK internally handles per-upload fetching. Given the "token used before" error,
+// we'll explicitly fetch and pass authentication parameters for each upload in handlePublishQuiz.
+const imagekit = new ImageKit({
+    publicKey: import.meta.env.VITE_PUBLIC_KEY,
+    urlEndpoint: import.meta.env.VITE_URL_ENDPOINT,
+    authenticationEndpoint: `${import.meta.env.VITE_API_URL || ''}/api/auth` 
+});
 
 const generateNewQuestion = (type) => {
     const baseQuestion = { id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, type, questionText: '', points: 10, timeLimit: 60, media: null, localMediaFile: null, localCropData: null };
@@ -112,30 +119,77 @@ const CreateQuiz = () => {
 
     const handleFile = (file, cropData, target) => {
         updateQuestionState(target.qIndex, q => {
-            const setMedia = (obj) => { obj.localMediaFile = file; obj.media = null; obj.localCropData = cropData; };
-            if (target.field === 'questionMedia') { setMedia(q); }
-            else if (target.field === 'mcqOptionMedia') { q.mcqData.options[target.oIndex] = { ...q.mcqData.options[target.oIndex], localMediaFile: file, media: null, localCropData: cropData }; }
-            else if (target.field === 'matchPromptMedia') { q.matchData.pairs[target.pairIndex] = { ...q.matchData.pairs[target.pairIndex], promptLocalMediaFile: file, promptMedia: null, promptLocalCropData: cropData }; }
-            else if (target.field === 'matchAnswerMedia') { q.matchData.pairs[target.pairIndex] = { ...q.matchData.pairs[target.pairIndex], answerLocalMediaFile: file, answerMedia: null, answerLocalCropData: cropData }; }
-            else if (target.field === 'categorizeItemMedia') { q.categorizeData.items[target.itemIndex] = { ...q.categorizeData.items[target.itemIndex], localMediaFile: file, media: null, localCropData: cropData }; }
-            else if (target.field === 'reorderItemMedia') { q.reorderData.items[target.itemIndex] = { ...q.reorderData.items[target.itemIndex], localMediaFile: file, media: null, localCropData: cropData }; }
-            else if (target.field === 'visualMainMedia') { q.visualData = { ...q.visualData, localMainMediaFile: file, mainMedia: null, localCropData: cropData }; }
-            else if (target.field === 'listeningMainMedia') { q.listeningData = { ...q.listeningData, localMainMediaFile: file, mainMedia: null, localCropData: null }; }
-            return { ...q };
+            if (target.field === 'questionMedia') {
+                return { ...q, localMediaFile: file, media: null, localCropData: cropData };
+            } else if (target.field === 'mcqOptionMedia') {
+                const newOptions = q.mcqData.options.map((opt, i) =>
+                    i === target.oIndex ? { ...opt, localMediaFile: file, media: null, localCropData: cropData } : opt
+                );
+                return { ...q, mcqData: { ...q.mcqData, options: newOptions } };
+            } else if (target.field === 'matchPromptMedia') {
+                const newPairs = q.matchData.pairs.map((p, i) =>
+                    i === target.pairIndex ? { ...p, promptLocalMediaFile: file, promptMedia: null, promptLocalCropData: cropData } : p
+                );
+                return { ...q, matchData: { ...q.matchData, pairs: newPairs } };
+            } else if (target.field === 'matchAnswerMedia') {
+                const newPairs = q.matchData.pairs.map((p, i) =>
+                    i === target.pairIndex ? { ...p, answerLocalMediaFile: file, answerMedia: null, answerLocalCropData: cropData } : p
+                );
+                return { ...q, matchData: { ...q.matchData, pairs: newPairs } };
+            } else if (target.field === 'categorizeItemMedia') {
+                const newItems = q.categorizeData.items.map((item, i) =>
+                    i === target.itemIndex ? { ...item, localMediaFile: file, media: null, localCropData: cropData } : item
+                );
+                return { ...q, categorizeData: { ...q.categorizeData, items: newItems } };
+            } else if (target.field === 'reorderItemMedia') {
+                const newItems = q.reorderData.items.map((item, i) =>
+                    i === target.itemIndex ? { ...item, localMediaFile: file, media: null, localCropData: cropData } : item
+                );
+                return { ...q, reorderData: { ...q.reorderData, items: newItems } };
+            } else if (target.field === 'visualMainMedia') {
+                return { ...q, visualData: { ...q.visualData, localMainMediaFile: file, mainMedia: null, localCropData: cropData } };
+            } else if (target.field === 'listeningMainMedia') {
+                return { ...q, listeningData: { ...q.listeningData, localMainMediaFile: file, mainMedia: null, localCropData: null } };
+            }
+            return { ...q }; 
         });
     };
     
     const handleRemoveMedia = () => {
         const { qIndex, field, oIndex, pairIndex, itemIndex } = cropperState.target;
         updateQuestionState(qIndex, q => {
-            if (field === 'questionMedia') { q.media = null; q.localMediaFile = null; q.localCropData = null; }
-            else if (field === 'mcqOptionMedia') { q.mcqData.options[oIndex] = { ...q.mcqData.options[oIndex], media: null, localMediaFile: null, localCropData: null }; }
-            else if (field === 'matchPromptMedia') { q.matchData.pairs[pairIndex] = { ...q.matchData.pairs[pairIndex], promptMedia: null, promptLocalMediaFile: null, promptLocalCropData: null }; }
-            else if (field === 'matchAnswerMedia') { q.matchData.pairs[pairIndex] = { ...q.matchData.pairs[pairIndex], answerMedia: null, answerLocalMediaFile: null, answerLocalCropData: null }; }
-            else if (field === 'categorizeItemMedia') { q.categorizeData.items[itemIndex] = { ...q.categorizeData.items[itemIndex], media: null, localMediaFile: null, localCropData: null }; }
-            else if (field === 'reorderItemMedia') { q.reorderData.items[itemIndex] = { ...q.reorderData.items[itemIndex], media: null, localMediaFile: null, localCropData: null }; }
-            else if (field === 'visualMainMedia') { q.visualData = { ...q.visualData, mainMedia: null, localMainMediaFile: null, localCropData: null }; }
-            else if (field === 'listeningMainMedia') { q.listeningData = { ...q.listeningData, mainMedia: null, localMainMediaFile: null }; }
+            if (field === 'questionMedia') {
+                return { ...q, media: null, localMediaFile: null, localCropData: null };
+            } else if (field === 'mcqOptionMedia') {
+                const newOptions = q.mcqData.options.map((opt, i) =>
+                    i === oIndex ? { ...opt, media: null, localMediaFile: null, localCropData: null } : opt
+                );
+                return { ...q, mcqData: { ...q.mcqData, options: newOptions } };
+            } else if (field === 'matchPromptMedia') {
+                const newPairs = q.matchData.pairs.map((p, i) =>
+                    i === pairIndex ? { ...p, promptMedia: null, promptLocalMediaFile: null, promptLocalCropData: null } : p
+                );
+                return { ...q, matchData: { ...q.matchData, pairs: newPairs } };
+            } else if (field === 'matchAnswerMedia') {
+                const newPairs = q.matchData.pairs.map((p, i) =>
+                    i === pairIndex ? { ...p, answerMedia: null, answerLocalMediaFile: null, answerLocalCropData: null } : p
+                );
+                return { ...q, matchData: { ...q.matchData, pairs: newPairs } };
+            } else if (field === 'categorizeItemMedia') {
+                const newItems = q.categorizeData.items.map((item, i) =>
+                    i === itemIndex ? { ...item, media: null, localMediaFile: null, localCropData: null } : item
+                );
+                return { ...q, categorizeData: { ...q.categorizeData, items: newItems } };
+            } else if (field === 'reorderItemMedia') {
+                const newItems = q.reorderData.items.map((item, i) =>
+                    i === itemIndex ? { ...item, media: null, localMediaFile: null, localCropData: null } : item
+                );
+                return { ...q, reorderData: { ...q.reorderData, items: newItems } };
+            } else if (field === 'visualMainMedia') {
+                return { ...q, visualData: { ...q.visualData, mainMedia: null, localMainMediaFile: null, localCropData: null } };
+            } else if (field === 'listeningMainMedia') {
+                return { ...q, listeningData: { ...q.listeningData, mainMedia: null, localMainMediaFile: null } };
+            }
             return { ...q };
         });
         setCropperState({ isOpen: false, imageSrc: null, file: null, target: null, initialCropData: null });
@@ -169,44 +223,101 @@ const CreateQuiz = () => {
     const handleSubMCQOptionChange = (qIndex, compType, subQIndex, oIndex, value) => { updateQuestionState(qIndex, q => ({ ...q, [compType]: { ...q[compType], subQuestions: q[compType].subQuestions.map((sq, i) => i === subQIndex ? { ...sq, mcqData: { ...sq.mcqData, options: sq.mcqData.options.map((opt, optI) => optI === oIndex ? { ...opt, text: value } : opt) } } : sq) } })); };
     const handleSubMCQCorrectToggle = (qIndex, compType, subQIndex, oIndex) => { updateQuestionState(qIndex, q => { const subQ = q[compType].subQuestions[subQIndex]; const optionId = subQ.mcqData.options[oIndex].id; const newCorrectOptions = subQ.mcqData.correctOptions.includes(optionId) ? subQ.mcqData.correctOptions.filter(id => id !== optionId) : [...subQ.mcqData.correctOptions, optionId]; return { ...q, [compType]: { ...q[compType], subQuestions: q[compType].subQuestions.map((sq, i) => i === subQIndex ? { ...sq, mcqData: { ...sq.mcqData, correctOptions: newCorrectOptions } } : sq) } }; }); };
 
+
     const handlePublishQuiz = async () => {
         if (!quizTitle) { setError("Please provide a title for your quiz."); return; }
         if (!currentUser) { setError("You must be logged in to publish a quiz."); return; }
-        setIsSubmitting(true); setError('');
+        
+        setIsSubmitting(true);
+        setError('');
+
         try {
-            const authApiUrl = `${import.meta.env.VITE_API_URL || ''}/api/auth`;
-            const response = await fetch(authApiUrl);
-            if (!response.ok) throw new Error("Authentication server failed");
-            const authParams = await response.json();
+            // Define a helper function to fetch auth params for a single upload
+            const fetchAuthParamsForUpload = async () => {
+                const authApiUrl = `${import.meta.env.VITE_API_URL || ''}/api/auth`;
+                const response = await fetch(authApiUrl);
+                if (!response.ok) {
+                    const errorBody = await response.json(); 
+                    throw new Error(`Authentication server failed: ${errorBody.message || response.statusText}`);
+                }
+                return response.json(); // This should contain { token, expire, signature }
+            };
 
             let questionsToSave = JSON.parse(JSON.stringify(questions));
             const uploadPromises = [];
+
             const processUploads = (questionSet, questionSetToSave) => {
                 questionSet.forEach((q, qIndex) => {
                     const addUpload = (file, cropData, target, prop) => {
-                        uploadPromises.push(imagekit.upload({ file, fileName: `quiz-media_${Date.now()}_${file.name}`, folder: '/quiz-app-media', ...authParams }).then(result => {
-                            target[prop] = { url: result.url, fileId: result.fileId, fileType: result.fileType, ...(cropData && { cropData }) };
-                        }));
+                        // Fetch new auth params for EACH individual upload operation
+                        uploadPromises.push(
+                            fetchAuthParamsForUpload().then(authParams => {
+                                return imagekit.upload({
+                                    file,
+                                    fileName: `quiz-media_${Date.now()}_${file.name}`,
+                                    folder: '/quiz-app-media',
+                                    token: authParams.token, // Pass the unique token
+                                    expire: authParams.expire, // Pass the expiry
+                                    signature: authParams.signature // Pass the signature
+                                });
+                            }).then(result => {
+                                target[prop] = { url: result.url, fileId: result.fileId, fileType: result.fileType, ...(cropData && { cropData }) };
+                            }).catch(uploadError => {
+                                console.error(`Error uploading file for ${prop} in question ${qIndex + 1}:`, uploadError);
+                                throw new Error(`Failed to upload media for question ${qIndex + 1}: ${uploadError.message || 'Unknown upload error'}`);
+                            })
+                        );
                     };
+
+                    // Original logic to identify local files and add them to uploadPromises
                     if (q.localMediaFile) addUpload(q.localMediaFile, q.localCropData, questionSetToSave[qIndex], 'media');
                     if (q.mcqData) q.mcqData.options.forEach((opt, oIndex) => { if (opt.localMediaFile) addUpload(opt.localMediaFile, opt.localCropData, questionSetToSave[qIndex].mcqData.options[oIndex], 'media'); });
-                    if (q.matchData) q.matchData.pairs.forEach((p, pIndex) => { if (p.promptLocalMediaFile) addUpload(p.promptLocalMediaFile, p.promptLocalCropData, questionSetToSave[qIndex].matchData.pairs[pIndex], 'promptMedia'); if (p.answerLocalMediaFile) addUpload(p.answerLocalMediaFile, p.answerLocalCropData, questionSetToSave[qIndex].matchData.pairs[pIndex], 'answerMedia'); });
+                    if (q.matchData) { 
+                        q.matchData.pairs.forEach((p, pIndex) => {
+                            if (p.promptLocalMediaFile) addUpload(p.promptLocalMediaFile, p.promptLocalCropData, questionSetToSave[qIndex].matchData.pairs[pIndex], 'promptMedia');
+                            if (p.answerLocalMediaFile) addUpload(p.answerLocalMediaFile, p.answerLocalCropData, questionSetToSave[qIndex].matchData.pairs[pIndex], 'answerMedia');
+                        });
+                    }
                     if (q.categorizeData) q.categorizeData.items.forEach((item, iIndex) => { if (item.localMediaFile) addUpload(item.localMediaFile, item.localCropData, questionSetToSave[qIndex].categorizeData.items[iIndex], 'media'); });
                     if (q.reorderData) q.reorderData.items.forEach((item, iIndex) => { if (item.localMediaFile) addUpload(item.localMediaFile, item.localCropData, questionSetToSave[qIndex].reorderData.items[iIndex], 'media'); });
                     if (q.visualData) { if (q.visualData.localMainMediaFile) addUpload(q.visualData.localMainMediaFile, q.visualData.localCropData, questionSetToSave[qIndex].visualData, 'mainMedia'); }
                     if (q.listeningData) { if (q.listeningData.localMainMediaFile) addUpload(q.listeningData.localMainMediaFile, null, questionSetToSave[qIndex].listeningData, 'mainMedia'); }
                 });
             };
+
             processUploads(questions, questionsToSave);
-            await Promise.all(uploadPromises);
+            await Promise.all(uploadPromises); // Wait for all uploads to complete
+
+            // Cleanup local file/crop data from the questions object before saving to Firestore
             const cleanup = (qs) => { qs.forEach(q => { delete q.localMediaFile; delete q.localCropData; if(q.mcqData) q.mcqData.options.forEach(opt => { delete opt.localMediaFile; delete opt.localCropData; }); if(q.matchData) q.matchData.pairs.forEach(p => { delete p.promptLocalMediaFile; delete p.promptLocalCropData; delete p.answerLocalMediaFile; delete p.answerLocalCropData; }); if(q.categorizeData) q.categorizeData.items.forEach(item => { delete item.localMediaFile; delete item.localCropData; }); if(q.reorderData) q.reorderData.items.forEach(item => { delete item.localMediaFile; delete item.localCropData; }); if(q.visualData) { delete q.visualData.localMainMediaFile; delete q.visualData.localCropData; } if(q.listeningData) { delete q.listeningData.localMainMediaFile; } }); };
             cleanup(questionsToSave);
-            const quizData = { title: quizTitle, description: quizDescription, code: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').sort(() => 0.5 - Math.random()).join('').slice(0, 6), quizType, createdBy: currentUser.uid, username: userDisplayName, createdAt: serverTimestamp(), active: true, questions: questionsToSave, totalPoints: questions.reduce((sum, q) => sum + (parseInt(q.points, 10) || 0), 0) };
+
+            // Prepare quiz data for Firestore
+            const quizData = {
+                title: quizTitle,
+                description: quizDescription,
+                code: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').sort(() => 0.5 - Math.random()).join('').slice(0, 6), // Generate a random 6-char code
+                quizType,
+                createdBy: currentUser.uid,
+                username: userDisplayName,
+                createdAt: serverTimestamp(),
+                active: true,
+                questions: questionsToSave,
+                totalPoints: questions.reduce((sum, q) => sum + (parseInt(q.points, 10) || 0), 0)
+            };
+
+            // Add quiz to Firestore
             await addDoc(collection(db, "quizzes"), quizData);
             setGeneratedCode(quizData.code);
             setIsPublished(true);
-        } catch (e) { console.error("Error publishing:", e); setError('An error occurred during publishing. Please check the browser console for details.'); } 
-        finally { setIsSubmitting(false); }
+
+        } catch (e) {
+            console.error("Error publishing:", e);
+            // Provide a more user-friendly error message
+            setError(`An error occurred during publishing: ${e.message || 'Unknown error'}. Please try again.`);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
     
     if (loading) return <div className="loading-screen">Loading...</div>;
@@ -219,14 +330,47 @@ const CreateQuiz = () => {
             <div className="create-quiz-content">
                 {!isPublished ? (
                     <>
-                        <div className="create-quiz-header"><button onClick={() => navigate('/teacher/home')} className="back-btn"><FaArrowLeft /> Dashboard</button><h2>Create New Quiz</h2><button onClick={handlePublishQuiz} className="publish-quiz-btn" disabled={isSubmitting}><FaSave /> {isSubmitting ? 'Publishing...' : 'Publish'}</button></div>
+                        <div className="create-quiz-header">
+                            <button onClick={() => navigate('/teacher/home')} className="back-btn"><FaArrowLeft /> Dashboard</button>
+                            <h2>Create New Quiz</h2>
+                            <button onClick={handlePublishQuiz} className="publish-quiz-btn" disabled={isSubmitting}>
+                                <FaSave /> {isSubmitting ? 'Publishing...' : 'Publish'}
+                            </button>
+                        </div>
                         {error && <div className="error-message"><FaTimes/> {error}</div>}
-                        <div className="quiz-form-section"><h3>1. Quiz Details</h3><div className="form-group"><label>Quiz Title</label><input type="text" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} placeholder="e.g., Chapter 5: Photosynthesis" className="form-control" /></div><div className="form-group"><label>Description</label><textarea value={quizDescription} onChange={(e) => setQuizDescription(e.target.value)} placeholder="A brief summary for your students" className="form-control" rows="3" /></div></div>
+                        <div className="quiz-form-section">
+                            <h3>1. Quiz Details</h3>
+                            <div className="form-group">
+                                <label>Quiz Title</label>
+                                <input type="text" value={quizTitle} onChange={(e) => setQuizTitle(e.target.value)} placeholder="e.g., Chapter 5: Photosynthesis" className="form-control" />
+                            </div>
+                            <div className="form-group">
+                                <label>Description</label>
+                                <textarea value={quizDescription} onChange={(e) => setQuizDescription(e.target.value)} placeholder="A brief summary for your students" className="form-control" rows="3" />
+                            </div>
+                        </div>
                         <div className="quiz-questions-section">
                             <h3>2. Questions</h3>
                             {questions.map((q, qIndex) => (
                                 <div key={q.id} className="question-card">
-                                    <div className="question-header"><h4>Question {qIndex + 1}</h4><div className="question-controls">{quizType === 'MIXED' && (<select value={q.type} onChange={(e) => handleQuestionTypeChange(qIndex, e.target.value)} className="question-type-select"><option value="MCQ">Multiple Choice</option><option value="FILL_IN_THE_BLANK">Fill in the Blank</option><option value="PARAGRAPH">Paragraph</option><option value="MATCH_THE_FOLLOWING">Match the Following</option><option value="CATEGORIZE">Categorize</option><option value="REORDER">Reorder</option><option value="VISUAL_COMPREHENSION">Visual Comprehension</option><option value="LISTENING_COMPREHENSION">Listening Comprehension</option></select>)}<button onClick={() => handleRemoveQuestion(qIndex)} className="remove-item-btn" type="button" disabled={questions.length === 1}><FaTrashAlt /></button></div></div>
+                                    <div className="question-header">
+                                        <h4>Question {qIndex + 1}</h4>
+                                        <div className="question-controls">
+                                            {quizType === 'MIXED' && (
+                                                <select value={q.type} onChange={(e) => handleQuestionTypeChange(qIndex, e.target.value)} className="question-type-select">
+                                                    <option value="MCQ">Multiple Choice</option>
+                                                    <option value="FILL_IN_THE_BLANK">Fill in the Blank</option>
+                                                    <option value="PARAGRAPH">Paragraph</option>
+                                                    <option value="MATCH_THE_FOLLOWING">Match the Following</option>
+                                                    <option value="CATEGORIZE">Categorize</option>
+                                                    <option value="REORDER">Reorder</option>
+                                                    <option value="VISUAL_COMPREHENSION">Visual Comprehension</option>
+                                                    <option value="LISTENING_COMPREHENSION">Listening Comprehension</option>
+                                                </select>
+                                            )}
+                                            <button onClick={() => handleRemoveQuestion(qIndex)} className="remove-item-btn" type="button" disabled={questions.length === 1}><FaTrashAlt /></button>
+                                        </div>
+                                    </div>
                                     <div className="question-main-content">
                                         <div className="question-text-and-media">
                                             <textarea value={q.questionText} onChange={(e) => handleQuestionChange(qIndex, 'questionText', e.target.value)} placeholder="Type your question or instruction here..." className="form-control question-textarea"/>
@@ -238,7 +382,16 @@ const CreateQuiz = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="question-settings"><div className="form-group"><label>Points</label><input type="number" value={q.points} onChange={(e) => handleQuestionChange(qIndex, 'points', parseInt(e.target.value, 10) || 0)} className="form-control points-input"/></div><div className="form-group"><label>Time (sec)</label><input type="number" value={q.timeLimit} onChange={(e) => handleQuestionChange(qIndex, 'timeLimit', parseInt(e.target.value, 10) || 0)} className="form-control points-input"/></div></div>
+                                        <div className="question-settings">
+                                            <div className="form-group">
+                                                <label>Points</label>
+                                                <input type="number" value={q.points} onChange={(e) => handleQuestionChange(qIndex, 'points', parseInt(e.target.value, 10) || 0)} className="form-control points-input"/>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Time (sec)</label>
+                                                <input type="number" value={q.timeLimit} onChange={(e) => handleQuestionChange(qIndex, 'timeLimit', parseInt(e.target.value, 10) || 0)} className="form-control points-input"/>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="question-body">
                                         {q.type === 'MCQ' && q.mcqData && <div className="options-container"><h4>Options (Check all correct answers)</h4>{q.mcqData.options.map((opt, oIndex) => (<div key={opt.id} className="option-item"><input type="checkbox" className="form-check-input" checked={q.mcqData.correctOptions.includes(opt.id)} onChange={() => handleMCQCorrectToggle(qIndex, oIndex)} /><input type="text" value={opt.text} onChange={(e) => handleMCQOptionChange(qIndex, oIndex, e.target.value)} placeholder={`Option ${oIndex + 1}`} className="form-control" />{(opt.media || opt.localMediaFile) ? (<MediaPreview file={opt.localMediaFile || opt.media} cropData={opt.localCropData || opt.media?.cropData} onEdit={() => handleEditCrop({ qIndex, field: 'mcqOptionMedia', oIndex })} />) : (<button type="button" className="add-media-btn-small" onClick={() => openUploadModal({ qIndex, field: 'mcqOptionMedia', oIndex })}><FaPhotoVideo/></button>)}<button className="remove-item-btn" onClick={() => handleRemoveMCQOption(qIndex, oIndex)} disabled={q.mcqData.options.length <= 2}><FaTimes/></button></div>))}<button type="button" className="add-item-btn" onClick={() => handleAddMCQOption(qIndex)}><FaPlus/> Add Option</button></div>}
@@ -255,7 +408,13 @@ const CreateQuiz = () => {
                         </div>
                     </>
                 ) : (
-                    <div className="quiz-published-section"><h2>Quiz Published!</h2><p>Share this code with your students:</p><div className="quiz-code">{generatedCode}</div><button onClick={() => navigator.clipboard.writeText(generatedCode)}><FaClipboard/> Copy Code</button><button onClick={() => navigate('/teacher/home')}>Back to Dashboard</button></div>
+                    <div className="quiz-published-section">
+                        <h2>Quiz Published!</h2>
+                        <p>Share this code with your students:</p>
+                        <div className="quiz-code">{generatedCode}</div>
+                        <button onClick={() => navigator.clipboard.writeText(generatedCode)}><FaClipboard/> Copy Code</button>
+                        <button onClick={() => navigate('/teacher/home')}>Back to Dashboard</button>
+                    </div>
                 )}
             </div>
         </div>
