@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
-import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
 import '../../styles/Student/YourResults.css';
+import MediaRenderer from '../../components/MediaRenderer';
+import { FaTimes, FaCheck, FaArrowLeft } from 'react-icons/fa';
 
 const YourResults = () => {
   const [results, setResults] = useState([]);
@@ -27,25 +29,23 @@ const YourResults = () => {
         setLoading(true);
         setError('');
         
-        // Query quiz results for the current user with a limit of 6
         const resultsRef = collection(db, 'quiz_results');
         const q = query(
           resultsRef,
           where('userId', '==', currentUser.uid),
-          orderBy('completedAt', 'desc'),
-          limit(6) // Limit to 6 as requested
+          orderBy('completedAt', 'desc')
         );
 
         const querySnapshot = await getDocs(q);
         const fetchedResults = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            const displayScore = data.status === 'completed' ? data.finalScore : data.initialScore;
+            const displayScore = data.status === 'completed' ? data.finalScore : data.score;
             const percentage = data.maxScore > 0 ? Math.round((displayScore / data.maxScore) * 100) : 0;
-            const correctCount = data.answers.filter(ans => ans.isCorrect === true).length;
+            const correctCount = data.answers.filter(ans => ans.pointsAwarded > 0).length;
 
             return {
                 id: doc.id,
-                ...data, // Include all original data
+                ...data,
                 displayScore,
                 percentage,
                 correctCount,
@@ -81,7 +81,6 @@ const YourResults = () => {
     setSelectedResult(result);
     setIsModalLoading(true);
     try {
-        // Fetch the original quiz to get all question details (like options, correct answers)
         const quizDocRef = doc(db, 'quizzes', result.quizId);
         const quizDocSnap = await getDoc(quizDocRef);
         if (quizDocSnap.exists()) {
@@ -126,12 +125,12 @@ const YourResults = () => {
 
       <div className="student-results-content">
         <div className="student-results-page-header">
-          <button className="student-results-back-btn" onClick={handleBackToDashboard}><i className="fas fa-arrow-left"></i> Back to Dashboard</button>
+          <button className="student-results-back-btn" onClick={handleBackToDashboard}><FaArrowLeft /> Back to Dashboard</button>
           <h1 className="student-results-page-title">Your Latest Results</h1>
           <div className="student-results-count">{results.length} Result{results.length !== 1 ? 's' : ''}</div>
         </div>
 
-        {error && <div className="student-results-error-message"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
+        {error && <div className="student-results-error-message"><FaTimes /> {error}</div>}
 
         {results.length === 0 ? (
           <div className="student-results-no-results">
@@ -152,23 +151,21 @@ const YourResults = () => {
                     <div className="student-score-badge student-pending-score">Pending</div>
                   )}
                 </div>
-
                 <div className="student-result-card-body">
                   <div className="student-result-meta">
-                    <div className="student-meta-item"><i className="fas fa-check-circle"></i><span>{result.correctCount}/{result.answers.length} Correct</span></div>
-                    <div className="student-meta-item"><i className="fas fa-clock"></i><span>Time: {Math.round(result.timeSpent / 60)} min</span></div>
-                    <div className="student-meta-item"><i className="fas fa-calendar"></i><span>{formatDate(result.completedAt)}</span></div>
+                    <div className="student-meta-item"><span>{result.correctCount}/{result.answers.length} Correct</span></div>
+                    <div className="student-meta-item"><span>Time: {Math.round(result.timeSpent / 60)} min</span></div>
+                    <div className="student-meta-item"><span>{formatDate(result.completedAt)}</span></div>
                   </div>
                   <div className="student-score-breakdown">
                     <div className="student-score-bar-container"><div className="student-score-bar-fill" style={{ width: `${result.percentage}%` }}></div></div>
                     <div className="student-score-text">
-                        {result.status === 'completed' ? `Final Score: ${result.finalScore} / ${result.maxScore} points` : `Auto-Graded Score: ${result.initialScore} points`}
+                        {result.status === 'completed' ? `Final Score: ${result.finalScore} / ${result.maxScore} points` : `Auto-Graded Score: ${result.score} points`}
                     </div>
                   </div>
                 </div>
-
                 <div className="student-result-card-actions">
-                  <button className="student-action-btn student-primary" onClick={() => handleViewDetails(result)} title="View Details"><i className="fas fa-eye"></i></button>
+                  <button className="student-action-btn student-primary" onClick={() => handleViewDetails(result)} title="View Details">View Review</button>
                 </div>
               </div>
             ))}
@@ -181,43 +178,62 @@ const YourResults = () => {
           <div className="student-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="student-modal-header">
               <h2>{selectedResult.quizTitle} - Review</h2>
-              <button className="student-close-btn" onClick={closeModal}><i className="fas fa-times"></i></button>
+              <button className="student-close-btn" onClick={closeModal}><FaTimes /></button>
             </div>
             <div className="student-modal-body">
               {isModalLoading ? (
                  <div className="student-results-loading-screen-inner"><div className="student-results-loading-spinner"></div><p>Loading review...</p></div>
               ) : modalQuizDetails ? (
                 <div className="student-questions-list">
-                    {selectedResult.answers.map((answer, index) => {
-                        const originalQuestion = modalQuizDetails.questions[index];
-                        const isCorrect = answer.isCorrect;
-                        const statusClass = isCorrect === true ? 'student-correct' : (isCorrect === false ? 'student-incorrect' : 'student-pending');
-
+                    {modalQuizDetails.questions.map((originalQuestion, index) => {
+                        const studentAnswerData = selectedResult.answers[index];
+                        const isCorrect = studentAnswerData.pointsAwarded >= originalQuestion.points;
+                        const statusClass = studentAnswerData.status === 'pending_review' ? 'student-pending' : isCorrect ? 'student-correct' : 'student-incorrect';
+                        
                         return(
-                            <div key={index} className={`student-question-review-item ${statusClass}`}>
+                            <div key={originalQuestion.id} className={`student-question-review-item ${statusClass}`}>
                                 <div className="student-question-review-header">
-                                    <span className="student-question-number">Q{index + 1}</span>
-                                    <p className="student-question-text">{answer.questionText}</p>
-                                    <span className="student-question-points">
-                                        {answer.pointsAwarded !== null ? `${answer.pointsAwarded} / ${originalQuestion.points}` : `Pending`}
-                                    </span>
+                                    <span className={`student-question-number ${statusClass}`}>Q{index + 1}</span>
+                                    <p className="student-question-text">{originalQuestion.questionText}</p>
+                                    <span className={`student-question-points ${statusClass}`}>{studentAnswerData.status === 'pending_review' ? 'Pending' : `${studentAnswerData.pointsAwarded} / ${originalQuestion.points}`}</span>
                                 </div>
+
                                 <div className="student-question-review-body">
                                     <div className="student-answer-review-box student-user-answer">
                                         <label>Your Answer</label>
-                                        <p>{typeof answer.userAnswer === 'number' ? originalQuestion.options[answer.userAnswer] : answer.userAnswer}</p>
-                                    </div>
-                                    {isCorrect === false && (
-                                        <div className="student-answer-review-box student-correct-answer">
-                                            <label>Correct Answer</label>
-                                            <p>{originalQuestion.type === 'MCQ' ? originalQuestion.options[originalQuestion.correctOption] : originalQuestion.answers.join(', ')}</p>
+                                        <div className="student-answer-content">
+                                            {(() => {
+                                                switch(originalQuestion.type) {
+                                                    case 'MCQ':
+                                                        const selectedOptionIds = studentAnswerData.userAnswer || [];
+                                                        return selectedOptionIds.length > 0 ? originalQuestion.mcqData.options.filter(opt => selectedOptionIds.includes(opt.id)).map(opt => <div key={opt.id}>{opt.text}</div>) : <p><i>No answer provided.</i></p>;
+                                                    case 'FILL_IN_THE_BLANK':
+                                                    case 'PARAGRAPH':
+                                                        return <p>{studentAnswerData.userAnswer || 'No answer provided.'}</p>;
+                                                    default:
+                                                        return <p><i>Review for this question type is not yet supported.</i></p>;
+                                                }
+                                            })()}
                                         </div>
-                                    )}
-                                    {/* --- TEACHER FEEDBACK --- */}
-                                    {answer.teacherFeedback && (
-                                        <div className="student-answer-review-box student-teacher-feedback">
-                                            <label>Teacher's Feedback</label>
-                                            <p>{answer.teacherFeedback}</p>
+                                    </div>
+                                    {!isCorrect && studentAnswerData.status !== 'pending_review' && (
+                                        <div className="student-answer-review-box student-correct-answer">
+                                            <label>Correct Answer(s)</label>
+                                            <div className="student-answer-content">
+                                            {(() => {
+                                                switch(originalQuestion.type) {
+                                                    case 'MCQ':
+                                                        return originalQuestion.mcqData.correctOptions.map(id => {
+                                                            const correctOpt = originalQuestion.mcqData.options.find(opt => opt.id === id);
+                                                            return <div key={id}>{correctOpt?.text}</div>
+                                                        });
+                                                    case 'FILL_IN_THE_BLANK':
+                                                        return originalQuestion.fillBlankData.answers.map(ans => ans.text).join(', ');
+                                                    default:
+                                                        return <p><i>N/A for this question type.</i></p>;
+                                                }
+                                            })()}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

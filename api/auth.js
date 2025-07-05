@@ -1,10 +1,8 @@
-// /api/auth.js - Corrected to use Vercel environment variables
+// /api/auth.js - Corrected to use a secure random token and Vercel environment variables
 
 import ImageKit from 'imagekit';
-
-// === THIS IS THE FIX ===
-// The initialization is now inside the handler and reads the correct variable names.
-// This ensures that for every request, it checks the right environment variables.
+// Import the built-in Node.js crypto module to generate a random token
+import crypto from 'crypto';
 
 export default function handler(req, res) {
   // Step 1: Add CORS Headers to every response
@@ -47,14 +45,18 @@ export default function handler(req, res) {
         urlEndpoint: URL_ENDPOINT,
     });
 
-    // Generate authentication parameters.
-    const authenticationParameters = imagekit.getAuthenticationParameters();
+    // === THE FIX IS HERE ===
+    // Generate a truly random UUID to use as the token.
+    const token = crypto.randomUUID();
+
+    // Pass this unique token to the getAuthenticationParameters function.
+    // This satisfies ImageKit's security requirement for high entropy.
+    const authenticationParameters = imagekit.getAuthenticationParameters(token);
 
     // Return the successful response.
-    return res.status(200).json({
-      success: true,
-      ...authenticationParameters
-    });
+    // The success:true property is not part of the standard ImageKit response,
+    // so it's better to return the object directly as the SDK intends.
+    return res.status(200).json(authenticationParameters);
 
   } catch (error) {
     console.error('ImageKit authentication error:', error);
