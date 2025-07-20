@@ -16,6 +16,9 @@ import Grading from './pages/Teacher/Grading';
 import './App.css';
 import { useAuth } from './contexts/AuthContext';
 
+import 'tui-image-editor/dist/tui-image-editor.css';
+import 'tui-color-picker/dist/tui-color-picker.css'; // Also needed for color picker
+
 // Simple protected route implementation
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAuth();

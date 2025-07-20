@@ -21,7 +21,9 @@
     "react-easy-crop": "^5.4.2",
     "react-icons": "^5.5.0",
     "react-photo-view": "^1.2.7",
-    "react-router-dom": "^7.6.0"
+    "react-router-dom": "^7.6.0",
+    "@toast-ui/react-image-editor": "^3.2.2",
+    "tui-image-editor": "^3.15.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
