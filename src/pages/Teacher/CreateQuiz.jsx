@@ -8,6 +8,7 @@ import { FaTrashAlt, FaPlus, FaClipboard, FaTimes, FaArrowLeft, FaPhotoVideo, Fa
 import ImageKit from 'imagekit-javascript';
 import MediaPreview from '../../components/MediaPreview';
 import ImageEditorModal from '../../components/ImageEditorModal';
+// just some testings
 
 // Initialize ImageKit globally.
 const imagekit = new ImageKit({
