@@ -7,6 +7,9 @@ import 'react-photo-view/dist/react-photo-view.css'; // NEW: Import the required
 import './index.css';
 import App from './App.jsx';
 
+import 'tui-image-editor/dist/tui-image-editor.css';
+import 'tui-color-picker/dist/tui-color-picker.css';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>

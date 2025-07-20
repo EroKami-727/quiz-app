@@ -369,3 +369,303 @@ textarea.form-control {
 .media-preview-edit-overlay svg {
   font-size: 1.5rem;
 }
+
+/* src/styles/Teacher/CreateQuiz.css */
+
+/* ... (existing CSS) ... */
+
+/* === IMAGE EDITOR MODAL SPECIFIC STYLES === */
+.image-editor-modal-content {
+  padding: 0; /* Remove padding from the main content as editor handles it */
+  display: flex;
+  flex-direction: column;
+  height: 95vh; /* Make it taller to accommodate the editor */
+  max-height: 900px; /* Max height for larger screens */
+  max-width: 1200px; /* Max width for larger screens */
+  background-color: #1a202c; /* Dark background for the modal itself */
+  overflow: hidden; /* Hide scrollbars if editor content overflows */
+}
+
+.image-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: #2d3748;
+  border-bottom: 1px solid #4a5568;
+  color: white;
+}
+
+.image-editor-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.editor-loading, .editor-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  color: #a0aec0;
+  font-size: 1.2rem;
+  background-color: #1a202c;
+}
+
+.image-editor-actions {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #4a5568;
+  background-color: #2d3748;
+}
+
+/* Override TOAST UI default styles if necessary */
+/* You might need to inspect the TOAST UI elements and add more specific overrides here */
+.tui-image-editor-container .tui-image-editor-header-logo {
+    display: none !important; /* Hide the TOAST UI logo */
+}
+
+.tui-image-editor-container .tui-image-editor-main {
+    background-color: #1a202c; /* Match editor background */
+}
+
+.tui-image-editor-container .tui-image-editor-submenu {
+    background-color: #2d3748; /* Match submenu background */
+}
+
+/* Adjust button styles within the editor if they don't match */
+.tui-image-editor-container .tui-image-editor-menu button {
+    /* Example: adjust button padding, font, etc. */
+    font-family: 'Inter', sans-serif;
+}
+
+/* Ensure the editor itself takes up available space */
+.tui-image-editor-wrap {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+.tui-image-editor-wrap .tui-image-editor-main {
+  flex-grow: 1;
+}
+.tui-image-editor-wrap .tui-image-editor-menu {
+  flex-shrink: 0; /* Prevent menu from shrinking */
+}
+
+/* Make sure the editor's canvas area fills its container */
+.tui-image-editor-main-container {
+  height: 100% !important;
+}
+
+/* src/styles/Teacher/CreateQuiz.css */
+
+/* ... (existing CSS) ... */
+
+/* === IMAGE EDITOR MODAL SPECIFIC STYLES === */
+.image-editor-modal-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 95vh;
+  max-height: 900px;
+  max-width: 1200px;
+  background-color: #1a202c;
+  overflow: hidden;
+}
+
+.image-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: #2d3748;
+  border-bottom: 1px solid #4a5568;
+  color: white;
+}
+
+.image-editor-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.editor-loading, .editor-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  color: #a0aec0;
+  font-size: 1.2rem;
+  background-color: #1a202c;
+}
+
+.image-editor-actions {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #4a5568;
+  background-color: #2d3748;
+}
+
+/* --- NEW CSS TO HIDE TOAST UI DEFAULT BUTTONS --- */
+.tui-image-editor-header-buttons .tui-image-editor-download-btn,
+.tui-image-editor-header-buttons .tui-image-editor-load-btn {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: none !important;
+}
+
+/* Override TOAST UI default styles if necessary */
+.tui-image-editor-container .tui-image-editor-header-logo {
+    display: none !important;
+}
+
+.tui-image-editor-container .tui-image-editor-main {
+    background-color: #1a202c;
+}
+
+.tui-image-editor-container .tui-image-editor-submenu {
+    background-color: #2d3748;
+}
+
+.tui-image-editor-wrap {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+.tui-image-editor-wrap .tui-image-editor-main {
+  flex-grow: 1;
+}
+.tui-image-editor-wrap .tui-image-editor-menu {
+  flex-shrink: 0;
+}
+
+.tui-image-editor-main-container {
+  height: 100% !important;
+}
+
+/* src/styles/Teacher/CreateQuiz.css */
+
+/* ... (existing CSS) ... */
+
+/* === IMAGE EDITOR MODAL SPECIFIC STYLES === */
+.image-editor-modal-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* Use a fixed height or max-height for the modal itself */
+  height: 95vh; /* This makes the modal take up 95% of viewport height */
+  max-height: 900px; /* Max height for larger screens */
+  width: 90vw; /* Give it a defined width */
+  max-width: 1200px; /* Max width for larger screens */
+  background-color: #1a202c;
+  overflow: hidden; /* Important: Prevents modal content from scrolling independently if it's supposed to be handled by editor */
+}
+
+.image-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: #2d3748;
+  border-bottom: 1px solid #4a5568;
+  color: white;
+}
+
+.image-editor-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.editor-loading, .editor-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  color: #a0aec0;
+  font-size: 1.2rem;
+  background-color: #1a202c;
+}
+
+.image-editor-actions {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #4a5568;
+  background-color: #2d3748;
+}
+
+/* --- NEW CSS TO HIDE TOAST UI DEFAULT BUTTONS AND ENSURE INTERACTIVITY --- */
+.tui-image-editor-header-buttons .tui-image-editor-download-btn,
+.tui-image-editor-header-buttons .tui-image-editor-load-btn {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: none !important;
+}
+
+/* Override TOAST UI default styles if necessary */
+.tui-image-editor-container .tui-image-editor-header-logo {
+    display: none !important;
+}
+
+.tui-image-editor-container .tui-image-editor-main {
+    background-color: #1a202c;
+    /* Ensure flex properties for main content area */
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allow it to take up remaining space */
+    overflow: hidden; /* Important for preventing internal scrollbars */
+}
+
+.tui-image-editor-container .tui-image-editor-submenu {
+    background-color: #2d3748;
+}
+
+/* Ensure the editor itself takes up available space */
+.tui-image-editor-wrap {
+  flex-grow: 1; /* Allows it to take up remaining vertical space */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Crucial: Prevents internal scrollbars on the wrapper itself */
+}
+.tui-image-editor-wrap .tui-image-editor-main {
+  flex-grow: 1; /* Main editor area takes up remaining space */
+  overflow: hidden; /* Prevents scrollbars on the main area */
+}
+.tui-image-editor-wrap .tui-image-editor-menu {
+  flex-shrink: 0; /* Prevent menu from shrinking */
+}
+
+/* Make sure the editor's canvas area fills its container */
+/* This is often the culprit for non-interactive areas */
+.tui-image-editor-main-container {
+   height: 100% !important;
+   width: 100% !important;
+   display: flex; /* Use flex to center the canvas if needed */
+   justify-content: center;
+   align-items: center;
+   overflow: hidden; /* Hide scrollbars if canvas overflows its direct container */
+}
+
+/* Specific overrides for the canvas and its wrapper if still not interactive */
+.tui-image-editor-canvas-container {
+    height: 100% !important;
+    width: 100% !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+canvas.lower-canvas, canvas.upper-canvas {
+    /* Ensure canvas elements themselves are correctly sized and visible */
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Or 'scale-down' depending on desired behavior */
+}
