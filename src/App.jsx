@@ -12,6 +12,8 @@ import MediaTest from './pages/Teacher/MediaTest';
 import StudentDashboard from './pages/Student/StudentDashboard.jsx';
 import YourResults from './pages/Student/YourResults';
 import Grading from './pages/Teacher/Grading'; 
+import GuestAttendQuiz from './pages/Guest/GuestAttendQuiz';
+import GuestTakeQuiz from './pages/Guest/GuestTakeQuiz';
 
 import './App.css';
 import { useAuth } from './contexts/AuthContext';
@@ -43,6 +45,9 @@ function App() {
         <Route path="/login" element={<LoginChoice />} />
         <Route path="/student/login" element={<StudentLogin />} />
         <Route path="/teacher/login" element={<TeacherLogin />} />
+        <Route path="/guest/attend-quiz" element={<GuestAttendQuiz />} />
+        <Route path="/guest/quiz/:quizId" element={<GuestTakeQuiz />} />
+
         
         {/* --- TEACHER ROUTES --- */}
         <Route path="/teacher/home" element={<ProtectedRoute><TeacherHome /></ProtectedRoute>} />

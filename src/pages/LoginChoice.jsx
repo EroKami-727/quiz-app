@@ -13,6 +13,10 @@ function LoginChoice() {
     navigate('/teacher/login');
   };
 
+  const handleGuestClick = () => {
+    navigate('/guest/attend-quiz');
+  };
+
   return (
     // Main container for background and overall centering/padding
     <div className="login-choice-container">
@@ -55,6 +59,22 @@ function LoginChoice() {
               <h2 className="login-option-title">Teacher</h2>
               <p className="login-option-description">Create and manage quizzes</p>
             </div>
+
+            <div
+              className="login-option"
+              onClick={handleGuestClick}
+              role="button" // Add role for accessibility
+              tabIndex={0} // Make it focusable
+              onKeyPress={(e) => e.key === 'Enter' && handleGuestClick()} // Allow activation with Enter key
+              aria-label="Continue as Guest" // Accessibility label
+            >
+              <div className="login-option-image" style={{backgroundColor: '#6c757d'}}> {/* Moved border-radius to CSS */}
+                 <span className="login-option-icon" role="img" aria-label="Guest emoji">👤</span>
+              </div>
+              <h2 className="login-option-title">Guest</h2>
+              <p className="login-option-description">Take a quiz without an account</p>
+            </div>
+
           </div>
         </div>
 

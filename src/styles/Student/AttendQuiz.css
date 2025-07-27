@@ -1,5 +1,143 @@
-/* Additional CSS for enhanced Available Quizzes section */
+/* --- START: Base Container and Layout Styles (Existing) --- */
+.attend-quiz-full-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  padding: 2rem;
+  background: linear-gradient(135deg, #3a1c71, #4776e6);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
 
+.attend-quiz-content {
+  display: flex;
+  width: 90vw; /* Adjusted for better responsiveness */
+  max-width: 700px; /* Set a max-width */
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem; /* Adjusted gap */
+  padding: 2rem;
+  border-radius: 15px;
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); /* Softened shadow */
+  animation: fadeIn 0.5s ease-out;
+}
+
+.welcome-text {
+  font-size: 1.1rem;
+  color: #ddd;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.7s ease-out 0.2s forwards;
+  opacity: 0;
+  text-align: center;
+}
+
+/* --- END: Base Container and Layout Styles --- */
+
+
+/* --- START: NEW Guest Attend Quiz Form Styles --- */
+/* This card now holds the guest input form */
+.join-quiz-card {
+  background-color: transparent;
+  color: #fff;
+  border-radius: 12px;
+  padding: 1rem; /* Adjusted padding */
+  width: 100%;
+  max-width: 500px;
+  box-shadow: none;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.join-quiz-card h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+/* The new, modern input group container */
+.input-group {
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  margin-top: 1rem; /* Added margin */
+}
+
+.input-group:focus-within {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.input-group input {
+  flex-grow: 1;
+  border: none;
+  background: transparent;
+  padding: 1rem;
+  font-size: 1rem;
+  color: white;
+  outline: none;
+  width: 100%;
+}
+
+.input-group input:first-of-type {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.3s ease;
+}
+
+.input-group input:focus::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.join-button {
+  background: linear-gradient(90deg, #fdfbfb, #ebedee);
+  color: #333;
+  border: none;
+  padding: 0 1.5rem;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.join-button:hover {
+  background: linear-gradient(90deg, #ffffff, #f0f2f3);
+  color: #000;
+  transform: scale(1.02);
+}
+
+.join-button:disabled {
+  background: #555;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #ffbaba;
+  background-color: rgba(255, 82, 82, 0.2);
+  border: 1px solid rgba(255, 82, 82, 0.5);
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 1.5rem;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease-out;
+}
+/* --- END: NEW Guest Attend Quiz Form Styles --- */
+
+
+/* --- START: Logged-in Student "Available Quizzes" Styles (Existing) --- */
 /* Loading State */
 .loading-state {
   display: flex;
@@ -19,15 +157,29 @@
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+/* Available quizzes card wrapper (for logged-in students) */
+.available-quizzes-card {
+  background-color: white;
+  color: #333;
+  border-radius: 10px;
+  padding: 2rem;
+  width: 100%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 1.5rem; /* Use margin-top instead of bottom */
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+.available-quizzes-card h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1.2rem;
+  text-align: center;
 }
 
 /* Quiz Grid for Students */
 .quizzes-grid-student {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); /* Adjusted min-width */
   gap: 1.5rem;
   margin-top: 1.5rem;
 }
@@ -277,7 +429,76 @@
   opacity: 0.8;
 }
 
-/* Animations */
+/* --- END: Logged-in Student "Available Quizzes" Styles --- */
+
+
+/* --- START: Buttons and Utility Styles (Existing) --- */
+.sign-out-top-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.sign-out-top-btn:hover {
+  background-color: rgba(239, 9, 9, 0.926);
+  transform: translateY(-3px);
+}
+
+.back-dashboard-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-dashboard-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.back-dashboard-btn i {
+  font-size: 0.9em;
+}
+
+/* --- END: Buttons and Utility Styles --- */
+
+
+/* --- START: Keyframes and Animations (Existing) --- */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes slideInUp {
   to {
     opacity: 1;
@@ -299,8 +520,10 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
 }
+/* --- END: Keyframes and Animations --- */
 
-/* Responsive Design */
+
+/* --- START: Responsive Design --- */
 @media (max-width: 768px) {
   .quizzes-grid-student {
     grid-template-columns: 1fr;
@@ -337,6 +560,43 @@
 }
 
 @media (max-width: 480px) {
+  /* Responsive styles for the new guest input */
+  .input-group {
+    flex-direction: column;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  
+  .input-group input {
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .input-group input:first-of-type {
+    border-right: 1px solid rgba(255, 255, 255, 0.1); /* Keep border for consistency */
+  }
+  
+  .join-button {
+    border-radius: 12px;
+    width: 100%;
+    padding: 1rem;
+  }
+  
+  /* Existing responsive styles */
+  .back-dashboard-btn {
+    top: auto; /* Unset top */
+    bottom: 20px; /* Position at the bottom */
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .sign-out-top-btn {
+     top: 20px;
+  }
+
   .quiz-card-student {
     padding: 1rem;
   }
@@ -353,203 +613,5 @@
     padding: 0.8rem;
   }
 }
-.attend-quiz-full-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  width: 100vw;
-  padding: 2rem;
-  background: linear-gradient(135deg, #3a1c71, #4776e6);
-  color: white;
-  position: relative;
-  overflow: hidden;
-}
 
-.sign-out-top-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border-radius: 20px;
-  padding: 10px 20px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 10;
-}
-
-.sign-out-top-btn:hover {
-  background-color: rgba(239, 9, 9, 0.926);
-  transform: translateY(-3px);
-}
-
-.attend-quiz-content {
-  display: flex;
-  width: 50vw;
-  flex-direction: column;
-  align-items: center;
-  gap: 2rem;
-  padding: 2rem;
-  border-radius: 15px;
-  background-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px rgba(181, 64, 64, 0.437);
-  animation: fadeIn 0.5s ease-out;
-}
-
-.welcome-text {
-  font-size: 1.1rem;
-  color: #ddd;
-  margin-bottom: 1rem;
-  animation: fadeIn 0.7s ease-out 0.2s forwards;
-  opacity: 0;
-}
-
-.attend-icon-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 10px 16px;
-  font-weight: bold;
-  font-size: 0.9rem;
-  background-color: #4b70e2;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.attend-icon-btn:hover {
-  background-color: #000001;
-  transform: translateY(-2px);
-}
-
-.available-quizzes-card {
-  background-color: white;
-  color: #333;
-  border-radius: 10px;
-  padding: 2rem;
-  width: 100%;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
-  animation: fadeInUp 0.5s ease-out forwards;
-  opacity: 0;
-}
-
-.available-quizzes-card h2 {
-  font-size: 1.8rem;
-  margin-bottom: 1.2rem;
-  text-align: center;
-}
-
-.quiz-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-}
-
-.quiz-list-item {
-  background-color: #f7f9fc;
-  border-radius: 10px;
-  padding: 1.5rem;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.quiz-info h3 {
-  margin: 0;
-}
-
-.quiz-details {
-  font-size: 0.9rem;
-  color: #666;
-  margin-top: 0.5rem;
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.join-quiz-btn {
-  background-color: #4b70e2;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  padding: 10px 20px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.join-quiz-btn:hover {
-  background-color: #3a5cc1;
-  transform: translateY(-2px);
-}
-
-.loading-screen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  width: 100vw;
-  background: linear-gradient(to right, #4a00e0, #8e2de2);
-  color: white;
-  font-size: 1.5rem;
-}
-
-/* Animations */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* New CSS for Back to Dashboard Button */
-.back-dashboard-btn {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: none;
-  border-radius: 20px;
-  padding: 10px 20px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.back-dashboard-btn:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-3px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.back-dashboard-btn i {
-  font-size: 0.9em;
-}
-
-/* Adjustments for smaller screens */
-@media (max-width: 480px) {
-  .back-dashboard-btn {
-    top: 70px; /* Position below the sign out button */
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .sign-out-top-btn {
-     /* Adjust if necessary to avoid overlap */
-     top: 20px;
-  }
-}
+/* --- END: Responsive Design --- */
